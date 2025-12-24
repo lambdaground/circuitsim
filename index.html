@@ -84,6 +84,51 @@
         .peak-table td { border-bottom:1px solid #eee; padding:3px; }
         .peak-table tr:hover { background:#f1f3f5; cursor:pointer; }
         .peak-row-active { background:#ffec99 !important; font-weight:bold; }
+/* --- MOBILE RESPONSIVE STYLES --- */
+    @media screen and (max-width: 768px) {
+        /* 1. 전체 레이아웃을 세로로 변경 */
+        #app { flex-direction: column; height: 100vh; overflow-y: auto; }
+        
+        /* 2. 패널 높이 재분배 (상단 회로: 55%, 하단 그래프: 45%) */
+        .pane { width: 100%; flex: none; }
+        #left-pane { height: 55vh; border-right: none; border-bottom: 4px solid #dee2e6; display: flex; flex-direction: column; }
+        #right-pane { height: 45vh; display: flex; flex-direction: column; }
+
+        /* 3. 내부 섹션 높이 조정 */
+        /* 회로 영역을 더 넓게 확보 */
+        #container { height: 65% !important; } 
+        #result-panel { height: 35% !important; }
+        
+        /* 그래프와 FFT 패널 탭 형식 또는 높이 조정 */
+        #graph-section { height: 60% !important; }
+        #fft-section { height: 40% !important; }
+
+        /* 4. 툴바 위치 및 크기 조정 (모바일에서 너무 크지 않게) */
+        #toolbar { 
+            top: 5px; left: 5px; width: 110px; 
+            padding: 5px; max-height: 60vh; overflow-y: auto;
+        }
+        .tool-tit { font-size: 9px; }
+        .btn { font-size: 10px; padding: 4px; }
+
+        /* 5. 컨트롤 패널 줄바꿈 허용 (입력창 짤림 방지) */
+        .ctrl-row { flex-wrap: wrap; gap: 8px; }
+        .ctrl-label { width: auto; margin-right: 5px; }
+        .inp { width: 50px; font-size: 12px; padding: 5px; }
+        .btn-primary, .btn-stop { padding: 8px; } /* 터치하기 쉽게 버튼 키움 */
+
+        /* 6. 모달 창 (매뉴얼, FFT) 모바일 최적화 */
+        #guide-modal { 
+            width: 90% !important; height: 70% !important; 
+            top: 15% !important; left: 5% !important; 
+            transform: none !important; /* 드래그 위치 초기화 */
+        }
+        #fft-modal #fft-box { width: 95%; height: 80%; padding: 10px; }
+        
+        /* 7. 폰트 사이즈 전반적 확대 */
+        body { font-size: 14px; }
+        .panel-header { padding: 5px 10px; font-size: 12px; }
+    }
     </style>
 </head>
 <body>
@@ -98,7 +143,7 @@
 
 <div id="guide-modal" style="display:none;">
     <div id="guide-header-bar">
-        <span style="font-weight:bold;" data-txt="guideTitle">📘 App User Guide</span>
+        <span style="font-weight:bold;" data-txt="guideTitle">📘 D. App User Guide</span>
         <button style="background:none; border:none; color:white; font-weight:bold; cursor:pointer;" onclick="toggleGuide()">✕</button>
     </div>
     <div id="guide-body">
@@ -110,7 +155,7 @@
     <div id="left-pane" class="pane">
         <div id="container"></div>
         <div id="result-panel">
-            <div class="panel-header"><span data-txt="resTitle">📊 Steady State Analysis</span></div>
+            <div class="panel-header"><span data-txt="resTitle">📊 C. Steady State Analysis</span></div>
             <div id="custom-calc-area">
                 <span style="font-size:11px; font-weight:bold; color:#555;">Formula:</span>
                 <input type="text" id="formula-inp" placeholder="e.g. V(N2)*conj(I(L1))">
@@ -187,7 +232,7 @@
         
         <div id="fft-section">
             <div class="panel-header" style="background:#fff; padding-left:0; border:none; margin-bottom:5px;">
-                <span style="font-weight:bold;">📊 FFT Spectrum</span>
+                <span style="font-weight:bold;">📊 C-2. FFT Spectrum</span>
                 <button class="btn-util" style="font-size:10px; padding:2px 6px; width:auto;" onclick="performFFT()">🔄 Update</button>
             </div>
             <div id="fft-controls">
@@ -212,25 +257,75 @@
 </div>
 
 <script>
-    // --- DRAGGABLE MODAL ---
+    // --- DRAGGABLE MODAL (Mouse & Touch Support) ---
     const guideModal = document.getElementById("guide-modal");
     const guideHeader = document.getElementById("guide-header-bar");
     let isDragging = false, currentX, currentY, initialX, initialY, xOffset = 0, yOffset = 0;
+
     function toggleGuide() {
         if (guideModal.style.display === "none") {
             guideModal.style.display = "flex";
+            // 중앙 정렬 초기화 (데스크탑/모바일 공통)
             if(xOffset === 0 && yOffset === 0) {
                 const rect = guideModal.getBoundingClientRect();
-                xOffset = (window.innerWidth - rect.width) / 2 - 100;
-                yOffset = (window.innerHeight - rect.height) / 2 - 100;
+                xOffset = (window.innerWidth - rect.width) / 2;
+                if(window.innerWidth > 768) xOffset -= 100; // 데스크탑 보정
+                yOffset = (window.innerHeight - rect.height) / 2;
+                if(window.innerWidth > 768) yOffset -= 100; // 데스크탑 보정
                 setTranslate(xOffset, yOffset, guideModal);
             }
         } else { guideModal.style.display = "none"; }
     }
-    guideHeader.addEventListener("mousedown", (e)=>{ initialX=e.clientX-xOffset; initialY=e.clientY-yOffset; if(e.target===guideHeader||guideHeader.contains(e.target)) isDragging=true; });
-    document.addEventListener("mousemove", (e)=>{ if(isDragging){ e.preventDefault(); currentX=e.clientX-initialX; currentY=e.clientY-initialY; xOffset=currentX; yOffset=currentY; setTranslate(currentX, currentY, guideModal); } });
-    document.addEventListener("mouseup", ()=>{ isDragging=false; });
-    function setTranslate(x, y, el) { el.style.transform = `translate3d(${x}px, ${y}px, 0)`; }
+
+    // Mouse Events
+    guideHeader.addEventListener("mousedown", dragStart);
+    document.addEventListener("mousemove", drag);
+    document.addEventListener("mouseup", dragEnd);
+
+    // Touch Events (For Mobile)
+    guideHeader.addEventListener("touchstart", dragStart, {passive: false});
+    document.addEventListener("touchmove", drag, {passive: false});
+    document.addEventListener("touchend", dragEnd);
+
+    function dragStart(e) {
+        // 터치 또는 마우스 좌표 통일
+        const clientX = e.type === 'touchstart' ? e.touches[0].clientX : e.clientX;
+        const clientY = e.type === 'touchstart' ? e.touches[0].clientY : e.clientY;
+
+        initialX = clientX - xOffset;
+        initialY = clientY - yOffset;
+
+        if (e.target === guideHeader || guideHeader.contains(e.target)) {
+            isDragging = true;
+        }
+    }
+
+    function drag(e) {
+        if (isDragging) {
+            e.preventDefault(); // 스크롤 방지
+            
+            const clientX = e.type === 'touchmove' ? e.touches[0].clientX : e.clientX;
+            const clientY = e.type === 'touchmove' ? e.touches[0].clientY : e.clientY;
+
+            currentX = clientX - initialX;
+            currentY = clientY - initialY;
+
+            xOffset = currentX;
+            yOffset = currentY;
+
+            setTranslate(currentX, currentY, guideModal);
+        }
+    }
+
+    function dragEnd(e) {
+        initialX = currentX;
+        initialY = currentY;
+        isDragging = false;
+    }
+
+    function setTranslate(x, y, el) {
+        el.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+    }
 
     // --- FFT (Improved) ---
     const SimpleFFT = {
