@@ -884,8 +884,70 @@
         for(let i=0;i<myChart.data.labels.length;i++){c+=myChart.data.labels[i]; myChart.data.datasets.forEach(d=>c+=`,${d.data[i]}`); c+="\n";}
         const b=new Blob([c],{type:'text/csv'}); const u=URL.createObjectURL(b); const a=document.createElement('a'); a.href=u; a.download='sim.csv'; a.click();
     }
-    function saveCircuit(){ if(components.length===0) return alert("Empty"); const data = {railCount,groundRails:Array.from(groundRails),components:components.map(c=>({name:c.name,type:c.type,val:c.val,freq:c.freq,phase:c.phase,unit:c.unit,nL:c.nL,nR:c.nR,ratio:c.ratio,uiX:c.group.x(),uiY:c.group.y()}))}; const b=new Blob([JSON.stringify(data)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='circuit.json'; a.click(); }
-    function loadCircuit(input){ const f=input.files[0]; if(!f) return; const r=new FileReader(); r.onload=(e)=>{try{const d=JSON.parse(e.target.result); resetAll(); railCount=d.railCount||6; groundRails=new Set(d.groundRails||[1]); d.components.forEach(c=>spawn(c.type,c)); drawGrid();}catch(err){alert("Err");}}; r.readAsText(f); input.value=''; }
+// [1] 새로운 함수 추가: 현재 부품들의 번호를 스캔하여 카운터 강제 동기화
+    function refreshIdCounters() {
+        // 1. 카운터 초기화
+        idCnt = {R:0, L:0, C:0, V:0, T:0, I:0};
+
+        // 2. 현재 화면에 있는 모든 부품 순회
+        components.forEach(c => {
+            // 이름에서 첫 글자(알파벳)와 뒷 숫자 분리 (예: R12 -> cat='R', num=12)
+            const match = c.name.match(/^([a-zA-Z]+)(\d+)$/);
+            if (match) {
+                const prefix = match[1]; // R, L, C, V, I, T
+                const num = parseInt(match[2], 10);
+                
+                // 카테고리 매핑 (V_DC, V_AC 등은 V로 시작하므로 자동으로 V로 잡힘)
+                // 하지만 코드상 idCnt 키는 R, L, C, V, T, I 로 관리됨.
+                // 따라서 prefix가 idCnt의 키에 있는지 확인
+                let catKey = prefix;
+                
+                // 만약 prefix가 idCnt에 없다면 (예: V_AC 등 복잡한 경우 대비) 기존 spawn 로직 활용
+                if (idCnt[catKey] === undefined) {
+                     if (c.type.includes('V')) catKey = 'V';
+                     else if (c.type.includes('I')) catKey = 'I';
+                     else catKey = c.type.charAt(0);
+                }
+
+                // 해당 카테고리의 카운터가 현재 부품 번호보다 작으면 업데이트
+                if (idCnt[catKey] !== undefined && idCnt[catKey] < num) {
+                    idCnt[catKey] = num;
+                }
+            }
+        });
+        console.log("ID Counters Refreshed:", idCnt); // 디버깅용 로그
+    }
+   
+ function saveCircuit(){ if(components.length===0) return alert("Empty"); const data = {railCount,groundRails:Array.from(groundRails),components:components.map(c=>({name:c.name,type:c.type,val:c.val,freq:c.freq,phase:c.phase,unit:c.unit,nL:c.nL,nR:c.nR,ratio:c.ratio,uiX:c.group.x(),uiY:c.group.y()}))}; const b=new Blob([JSON.stringify(data)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='circuit.json'; a.click(); }
+    // [2] loadCircuit 함수 수정: 로드 완료 후 refreshIdCounters 호출
+    function loadCircuit(input){ 
+        const f=input.files[0]; 
+        if(!f) return; 
+        const r=new FileReader(); 
+        r.onload=(e)=>{
+            try{
+                const d=JSON.parse(e.target.result); 
+                
+                // 1. 초기화
+                resetAll(); 
+                
+                // 2. 설정 및 부품 생성
+                railCount=d.railCount||6; 
+                groundRails=new Set(d.groundRails||[1]); 
+                d.components.forEach(c=>spawn(c.type,c)); 
+                
+                // 3. [핵심] 모든 부품이 로드된 후, 카운터 재설정 함수 호출
+                refreshIdCounters();
+
+                drawGrid();
+            }catch(err){
+                console.error(err);
+                alert("Err");
+            }
+        }; 
+        r.readAsText(f); 
+        input.value=''; 
+    }
     function resetAll(){ 
         components.forEach(c=>{c.group.destroy();c.lineL.destroy();c.lineR.destroy();}); 
         components=[]; idCnt={R:0,L:0,C:0,V:0,T:0,I:0}; railCount=6; groundRails=new Set([1]); drawGrid(); 
