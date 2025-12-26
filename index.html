@@ -375,7 +375,7 @@
 
     // --- MATH & UTILS ---
     function parseUnit(s){if(!s)return NaN;s=s.toString();const m=s.match(/^([\d\.]+)\s*([a-zA-Z]*)$/);if(!m)return parseFloat(s);const v=parseFloat(m[1]),u=m[2],k={'p':1e-12,'n':1e-9,'u':1e-6,'m':1e-3,'k':1e3,'M':1e6,'G':1e9};return v*(k[u]||1);}
-    function formatUnit(v,u){if(Math.abs(v)<1e-15)return "0"+u;const a=Math.abs(v),r=[{v:1e9,s:'G'},{v:1e6,s:'M'},{v:1e3,s:'k'},{v:1,s:''},{v:1e-3,s:'m'},{v:1e-6,s:'u'},{v:1e-9,s:'n'},{v:1e-12,s:'p'}];for(let x of r)if(a>=x.v*0.9)return parseFloat((v/x.v).toFixed(2))+x.s+u;return v.toExponential(1)+u;}
+    function formatUnit(v,u){if(Math.abs(v)<1e-15)return "0"+u;const a=Math.abs(v),r=[{v:1e9,s:'G'},{v:1e6,s:'M'},{v:1e3,s:'k'},{v:1,s:''},{v:1e-3,s:'m'},{v:1e-6,s:'u'},{v:1e-9,s:'n'},{v:1e-12,s:'p'}];for(let x of r)if(a>=x.v*0.9)return parseFloat((v/x.v).toFixed(3))+x.s+u;return v.toExponential(1)+u;}
     function formatEng(v){if(v===0)return "0";const k={'p':1e-12,'n':1e-9,'u':1e-6,'m':1e-3,'':1};let bK='',bV=v;for(let key in k){if(Math.abs(v)>=k[key]&&k[key]<1){if(Math.abs(v)/k[key]<1000){bK=key;bV=v/k[key];break;}}}return parseFloat(bV.toFixed(2))+bK;}
 
     // --- TEXTS ---
@@ -704,7 +704,7 @@
                     let cmplx = (typeof res === 'object' && res.re!==undefined) ? res : math.complex(res);
                     let p = cmplx.toPolar();
                     let rms = p.r / Math.SQRT2;
-                    h += `<td>${formatUnit(p.r,'')}</td><td>${formatUnit(rms,'')}</td><td>${(p.phi*180/Math.PI).toFixed(1)}°</td>`;
+                    h += `<td>${formatUnit(p.r,'')}</td><td>${formatUnit(rms,'')}</td><td>${(p.phi*180/Math.PI).toFixed(3)}°</td>`;
                     h += `<td><button class="btn-del-row" onclick="removeCustomFormula(${idx})">×</button></td></tr>`;
                 } catch(e) {
                     h += `<tr class="custom-row"><td>${fmt}</td><td colspan="3" style="color:red">Error</td><td><button class="btn-del-row" onclick="removeCustomFormula(${idx})">×</button></td></tr>`;
@@ -838,7 +838,7 @@
     function drawChart(times, vData, iData, N, map, scale, unitStr) {
         const ctx=document.getElementById('myChart').getContext('2d');
         if(myChart) myChart.destroy();
-        const labels=times.map(t=>(t/scale).toFixed(2));
+        const labels=times.map(t=>(t/scale).toFixed(3));
         const sets=[]; const cols=['#e03131','#1971c2','#2f9e44','#f08c00','#9c36b5'];
         const invMap = {}; Object.keys(map).forEach(k => { if(map[k] >= 0) invMap[map[k]] = k; });
 
@@ -912,9 +912,9 @@
         tbody.innerHTML = "";
         sorted.forEach((p, i) => {
             const tr = document.createElement('tr');
-            tr.innerHTML = `<td>${i+1}</td><td>${p.x.toFixed(1)}</td><td>${p.y.toExponential(2)}</td>`;
+            tr.innerHTML = `<td>${i+1}</td><td>${p.x.toFixed(3)}</td><td>${p.y.toExponential(3)}</td>`;
             tr.onclick = () => highlightBar(p.x);
-            tr.id = `peak-row-${p.x.toFixed(1).replace('.','_')}`;
+            tr.id = `peak-row-${p.x.toFixed(3).replace('.','_')}`;
             tbody.appendChild(tr);
         });
         
