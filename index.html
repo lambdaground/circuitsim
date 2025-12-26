@@ -84,6 +84,9 @@
         .peak-table td { border-bottom:1px solid #eee; padding:3px; }
         .peak-table tr:hover { background:#f1f3f5; cursor:pointer; }
         .peak-row-active { background:#ffec99 !important; font-weight:bold; }
+
+
+        
 /* --- MOBILE RESPONSIVE STYLES --- */
     @media screen and (max-width: 768px) {
         /* 1. 전체 레이아웃을 세로로 변경 */
@@ -129,6 +132,15 @@
         body { font-size: 14px; }
         .panel-header { padding: 5px 10px; font-size: 12px; }
     }
+
+        
+        /* Guestbook Specific */
+        #guest-list { list-style: none; padding: 0; margin: 0; }
+        .guest-item { border-bottom: 1px solid #eee; padding: 8px 0; }
+        .guest-nick { font-weight: bold; color: #228be6; font-size: 12px; }
+        .guest-msg { color: #333; font-size: 12px; margin-top: 2px; }
+        .guest-time { color: #aaa; font-size: 10px; float: right; }
+        #guest-form { display: flex; gap: 5px; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 2px solid #eee; }
     </style>
 </head>
 <body>
@@ -136,6 +148,7 @@
 <div id="main-header">
     <div id="app-title">Online Circuit Simulator for Beginners</div>
     <div class="header-btns">
+        <button id="guest-btn" class="header-btn" onclick="toggleGuestbook()">🖊️ Guestbook</button>
         <button id="manual-btn" class="header-btn" onclick="toggleGuide()">📖 Manual</button>
         <button id="lang-btn" class="header-btn" onclick="toggleLanguage()">🌐 English</button>
     </div>
@@ -377,6 +390,60 @@
     function parseUnit(s){if(!s)return NaN;s=s.toString();const m=s.match(/^([\d\.]+)\s*([a-zA-Z]*)$/);if(!m)return parseFloat(s);const v=parseFloat(m[1]),u=m[2],k={'p':1e-12,'n':1e-9,'u':1e-6,'m':1e-3,'k':1e3,'M':1e6,'G':1e9};return v*(k[u]||1);}
     function formatUnit(v,u){if(Math.abs(v)<1e-15)return "0"+u;const a=Math.abs(v),r=[{v:1e9,s:'G'},{v:1e6,s:'M'},{v:1e3,s:'k'},{v:1,s:''},{v:1e-3,s:'m'},{v:1e-6,s:'u'},{v:1e-9,s:'n'},{v:1e-12,s:'p'}];for(let x of r)if(a>=x.v*0.9)return parseFloat((v/x.v).toFixed(3))+x.s+u;return v.toExponential(1)+u;}
     function formatEng(v){if(v===0)return "0";const k={'p':1e-12,'n':1e-9,'u':1e-6,'m':1e-3,'':1};let bK='',bV=v;for(let key in k){if(Math.abs(v)>=k[key]&&k[key]<1){if(Math.abs(v)/k[key]<1000){bK=key;bV=v/k[key];break;}}}return parseFloat(bV.toFixed(2))+bK;}
+ // --- SUPABASE CONFIGURATION ---
+    // [!] PLEASE REPLACE THESE WITH YOUR OWN SUPABASE PROJECT DETAILS
+    const SUPABASE_URL = 'https://rhiaahzaftsfnbaywcby.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_iDFJ6pJRKCbwaE1SQleLMg_mOHD8Q4z';
+    const supabase = (SUPABASE_URL && SUPABASE_KEY) ? supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
+
+    // --- GUESTBOOK LOGIC ---
+    function toggleGuestbook() {
+        const m = document.getElementById('guest-modal');
+        const isOpening = m.style.display !== 'flex';
+        m.style.display = isOpening ? 'flex' : 'none';
+        if(isOpening) loadGuestbook();
+    }
+
+    async function loadGuestbook() {
+        if(!supabase) {
+            document.getElementById('guest-list').innerHTML = '<li style="text-align:center; padding:10px;">Supabase not configured.</li>';
+            return;
+        }
+        const { data, error } = await supabase.from('circuitsim').select('*').order('created_at', { ascending: false }).limit(50);
+        if(error) {
+            console.error(error);
+            document.getElementById('guest-list').innerHTML = '<li style="color:red">Error loading data.</li>';
+            return;
+        }
+        renderGuestList(data);
+    }
+
+    function renderGuestList(data) {
+        const ul = document.getElementById('guest-list');
+        ul.innerHTML = "";
+        data.forEach(item => {
+            const li = document.createElement('li');
+            li.className = 'guest-item';
+            const date = new Date(item.created_at).toLocaleDateString();
+            li.innerHTML = `<span class="guest-time">${date}</span><div class="guest-nick">${escapeHtml(item.nickname)}</div><div class="guest-msg">${escapeHtml(item.message)}</div>`;
+            ul.appendChild(li);
+        });
+    }
+
+    async function addGuestEntry() {
+        if(!supabase) return alert("Supabase Key Missing");
+        const nick = document.getElementById('g-nick').value.trim();
+        const msg = document.getElementById('g-msg').value.trim();
+        if(!nick || !msg) return alert("Please fill nickname and message.");
+
+        const { error } = await supabase.from('circuitsim').insert([{ nickname: nick, message: msg }]);
+        if(error) {
+            alert("Error writing: " + error.message);
+        } else {
+            document.getElementById('g-msg').value = '';
+            loadGuestbook(); // Reload list
+        }
+    }
 
     // --- TEXTS ---
     let curLang = 'ko'; 
