@@ -16,25 +16,41 @@
         ::-webkit-scrollbar-thumb { background: #adb5bd; border-radius: 4px; }
         
         /* HEADER */
-        #main-header { height: 50px; background: #343a40; color: white; display: flex; align-items: center; padding: 0 20px; flex-shrink: 0; position: relative; }
+        #main-header { height: 50px; background: #343a40; color: white; display: flex; align-items: center; padding: 0 20px; flex-shrink: 0; position: relative; z-index: 100; }
         #app-title { font-size: 18px; font-weight: bold; position: absolute; left: 50%; transform: translateX(-50%); }
         .header-btns { position: absolute; right: 20px; display: flex; gap: 10px; }
         .header-btn { background: #495057; color: white; border: 1px solid #adb5bd; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; }
         .header-btn:hover { background: #6c757d; }
+        .header-btn.active { background: #228be6; border-color: #228be6; } /* 활성화 상태 스타일 */
 
-        /* LAYOUT */
+        /* LAYOUT (3-Column Grid) */
         #app { display: flex; flex: 1; width: 100vw; overflow: hidden; }
-        .pane { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+        .pane { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; } /* min-width:0 is crucial for flex charts */
         
-        #left-pane { border-right: 4px solid #dee2e6; }
+        #left-pane { border-right: 4px solid #dee2e6; flex: 1.2; } /* 회로 영역을 조금 더 넓게 */
+        #right-pane { flex: 1; display: flex; flex-direction: column; }
+        
+        /* New Guestbook Sidebar */
+        #guest-pane { 
+            width: 300px; 
+            background: #fff; 
+            border-left: 4px solid #dee2e6; 
+            display: flex; 
+            flex-direction: column; 
+            transition: width 0.3s ease, padding 0.3s ease; /* 부드러운 열림/닫힘 효과 */
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+        #guest-pane.closed { width: 0; border-left: none; }
+
+        /* Internal Sections */
         #container { height: 50%; width: 100%; min-height: 0; background: #f1f3f5; border-bottom: 4px solid #dee2e6; position: relative; }
         #result-panel { height: 50%; background: white; padding: 0; overflow: hidden; display: flex; flex-direction: column; }
 
-        #right-pane { background: #fff; }
         #graph-section { height: 50%; display: flex; flex-direction: column; border-bottom: 4px solid #dee2e6; padding: 10px; background: #fff; position: relative; min-height: 0; }
         #fft-section { height: 50%; display: flex; flex-direction: column; background: #fff; overflow: hidden; position: relative; padding: 10px; }
 
-        /* CONTROLS */
+        /* CONTROLS & UI Elements */
         #graph-controls { padding: 5px; background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 6px; margin-bottom: 5px; }
         .ctrl-row { display: flex; gap: 5px; align-items: center; margin-bottom: 2px; flex-wrap: wrap; }
         .ctrl-label { font-size: 11px; font-weight: 700; color: #555; width: 60px; }
@@ -42,11 +58,10 @@
         .inp-sel { padding: 2px; border: 1px solid #ced4da; border-radius: 3px; font-size: 11px; }
         #chart-wrapper { flex: 1; position: relative; min-height: 0; }
 
-        /* Custom Formula Area */
         #custom-calc-area { padding: 8px; background: #e9ecef; border-bottom: 1px solid #dee2e6; display:flex; gap:5px; align-items:center; }
         #formula-inp { flex:1; padding:4px; border:1px solid #ced4da; border-radius:3px; font-size:11px; }
 
-        .panel-header { padding: 8px 15px; background: #e9ecef; border-bottom: 1px solid #dee2e6; font-weight: bold; font-size: 13px; color: #495057; display:flex; align-items:center; justify-content: space-between; }
+        .panel-header { padding: 8px 15px; background: #e9ecef; border-bottom: 1px solid #dee2e6; font-weight: bold; font-size: 13px; color: #495057; display:flex; align-items:center; justify-content: space-between; flex-shrink: 0; }
         #res-content { flex: 1; padding: 0; overflow-y: auto; }
 
         #toolbar { position: absolute; top: 15px; left: 15px; width: 140px; background: rgba(255,255,255,0.95); padding: 10px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.15); z-index: 10; }
@@ -69,25 +84,24 @@
         .custom-row { background-color: #f3f0ff; color: #5f3dc4; font-weight:bold; }
         .btn-del-row { background:none; border:none; cursor:pointer; color:#fa5252; font-weight:bold; }
 
-        /* MODALS (Common) */
+        /* Guide Modal (Still a modal) */
         .modal { display: none; position: fixed; background: #fff; border: 1px solid #adb5bd; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); z-index: 1000; flex-direction: column; resize: both; overflow: hidden; }
         .modal-header { padding: 10px; background: #343a40; color: white; cursor: move; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
         .modal-body { flex: 1; padding: 15px; overflow-y: auto; font-size: 12px; line-height: 1.6; color: #333; background: #f8f9fa;}
-        
-        /* Guide Modal Specific */
         #guide-modal { width: 400px; height: 500px; top: 100px; left: 100px; }
         #guide-body ul { padding-left: 20px; margin: 0; }
         #guide-body li { margin-bottom: 6px; }
 
-        /* Guestbook Modal Specific */
-        #guest-modal { width: 350px; height: 500px; top: 100px; left: 100px; }
-        #guest-list { flex: 1; overflow-y: auto; margin-bottom: 10px; border: 1px solid #dee2e6; background: white; padding: 10px; border-radius: 4px; }
-        .guest-msg { margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+        /* Guestbook Sidebar Styles (Replaced Modal Styles) */
+        #guest-list-area { flex: 1; overflow-y: auto; padding: 10px; background: #f8f9fa; }
+        #guest-input-area { padding: 10px; background: #fff; border-top: 1px solid #dee2e6; display: flex; flex-direction: column; gap: 6px; }
+        .guest-msg { background: white; border: 1px solid #e9ecef; border-radius: 6px; padding: 8px; margin-bottom: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+        .guest-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
         .guest-user { font-weight: bold; color: #228be6; font-size: 11px; }
-        .guest-time { font-size: 9px; color: #888; float: right; }
-        .guest-txt { font-size: 12px; margin-top: 2px; }
-        #guest-form { display: flex; gap: 5px; flex-direction: column; }
-        .guest-inp { padding: 6px; border: 1px solid #ced4da; border-radius: 4px; font-size: 12px; }
+        .guest-time { font-size: 9px; color: #adb5bd; }
+        .guest-txt { font-size: 12px; color: #495057; word-break: break-all; }
+        .guest-inp { padding: 8px; border: 1px solid #ced4da; border-radius: 4px; font-size: 12px; width: 100%; }
+        .guest-inp:focus { outline: none; border-color: #228be6; }
 
         /* FFT PANEL */
         #fft-controls { display:flex; gap:5px; align-items:center; font-size:11px; margin-bottom: 5px; flex-wrap: wrap; background: #f1f3f5; padding: 5px; border-radius: 5px;}
@@ -109,6 +123,9 @@
         #result-panel { height: 35% !important; }
         #graph-section { height: 60% !important; }
         #fft-section { height: 40% !important; }
+        /* Mobile: Guestbook acts as a drawer over content */
+        #guest-pane { position: fixed; top: 50px; right: 0; bottom: 0; z-index: 90; box-shadow: -5px 0 15px rgba(0,0,0,0.1); }
+        
         #toolbar { top: 5px; left: 5px; width: 110px; padding: 5px; max-height: 60vh; overflow-y: auto; }
         .tool-tit { font-size: 9px; }
         .btn { font-size: 10px; padding: 4px; }
@@ -116,8 +133,7 @@
         .ctrl-label { width: auto; margin-right: 5px; }
         .inp { width: 50px; font-size: 12px; padding: 5px; }
         .btn-primary, .btn-stop { padding: 8px; }
-        /* Modals on Mobile */
-        .modal { width: 90% !important; height: 70% !important; top: 15% !important; left: 5% !important; transform: none !important; }
+        #guide-modal { width: 90% !important; height: 70% !important; top: 15% !important; left: 5% !important; transform: none !important; }
         body { font-size: 14px; }
         .panel-header { padding: 5px 10px; font-size: 12px; }
     }
@@ -126,9 +142,9 @@
 <body>
 
 <div id="main-header">
-    <div id="app-title">Online Circuit Simulator for Beginners</div>
+    <div id="app-title">Online Circuit Simulator</div>
     <div class="header-btns">
-        <button id="guest-btn" class="header-btn" onclick="toggleGuestbook()"><span data-txt="nav_guestbook">📝 Guestbook</span></button>
+        <button id="guest-btn" class="header-btn" onclick="toggleGuestSidebar()"><span data-txt="nav_guestbook">📝 Guestbook</span></button>
         <button id="manual-btn" class="header-btn" onclick="toggleGuide()">📖 Manual</button>
         <button id="lang-btn" class="header-btn" onclick="toggleLanguage()">🌐 English</button>
     </div>
@@ -141,21 +157,6 @@
     </div>
     <div id="guide-body" class="modal-body">
         <ul id="guide-list"></ul>
-    </div>
-</div>
-
-<div id="guest-modal" class="modal">
-    <div id="guest-header-bar" class="modal-header">
-        <span style="font-weight:bold;">📝 Guestbook</span>
-        <button style="background:none; border:none; color:white; font-weight:bold; cursor:pointer;" onclick="toggleGuestbook()">✕</button>
-    </div>
-    <div class="modal-body" style="display:flex; flex-direction:column;">
-        <div id="guest-list">Loading...</div>
-        <div id="guest-form">
-            <input type="text" id="g-name" class="guest-inp" placeholder="Name">
-            <input type="text" id="g-msg" class="guest-inp" placeholder="Message">
-            <button class="btn btn-primary" style="justify-content:center;" onclick="postMessage()">Submit</button>
-        </div>
     </div>
 </div>
 
@@ -262,6 +263,19 @@
             </div>
         </div>
     </div>
+
+    <div id="guest-pane" class="closed">
+        <div class="panel-header">
+            <span>📝 Guestbook</span>
+            <button class="btn-util" style="width:auto; padding:2px 6px;" onclick="loadMessages()">🔄</button>
+        </div>
+        <div id="guest-list-area">Loading...</div>
+        <div id="guest-input-area">
+            <input type="text" id="g-name" class="guest-inp" placeholder="Name">
+            <input type="text" id="g-msg" class="guest-inp" placeholder="Message" onkeydown="if(event.key==='Enter') postMessage()">
+            <button class="btn btn-primary" style="justify-content:center; width:100%;" onclick="postMessage()">Submit</button>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -281,31 +295,37 @@
         }
     } catch(e) { console.error("Supabase Init Error:", e); }
 
-    const guestModal = document.getElementById("guest-modal");
-    
-    function toggleGuestbook() {
+    // --- SIDEBAR TOGGLE ---
+    const guestPane = document.getElementById("guest-pane");
+    const guestBtn = document.getElementById("guest-btn");
+
+    function toggleGuestSidebar() {
         if(!supabaseClient) {
             alert("Supabase not initialized.");
             return;
         }
-        if (guestModal.style.display === "none") {
-            guestModal.style.display = "flex";
-            loadMessages();
-            // Center if needed
-            if(parseInt(guestModal.style.top||0) === 0) {
-                const rect = guestModal.getBoundingClientRect();
-                setTranslate((window.innerWidth - rect.width)/2 - 200, (window.innerHeight - rect.height)/2, guestModal);
-            }
+        
+        // Toggle class
+        const isClosed = guestPane.classList.contains('closed');
+        if(isClosed) {
+            guestPane.classList.remove('closed');
+            guestBtn.classList.add('active');
+            loadMessages(); // Load data when opened
         } else {
-            guestModal.style.display = "none";
+            guestPane.classList.add('closed');
+            guestBtn.classList.remove('active');
         }
+        
+        // Trigger resize event so charts redraw correctly in new width
+        setTimeout(() => {
+            window.dispatchEvent(new Event('resize'));
+        }, 350); 
     }
 
     async function loadMessages() {
-        const listDiv = document.getElementById("guest-list");
-        listDiv.innerHTML = "Loading...";
+        const listDiv = document.getElementById("guest-list-area");
+        listDiv.innerHTML = '<div style="text-align:center; padding:10px; color:#999;">Loading...</div>';
         try {
-            // [Updated] Table: circuitsim, Columns: name, message
             const { data, error } = await supabaseClient
                 .from('circuitsim')
                 .select('*')
@@ -324,12 +344,17 @@
                 const d = new Date(msg.created_at).toLocaleString();
                 const div = document.createElement('div');
                 div.className = 'guest-msg';
-                // Using 'name' and 'message' from DB
-                div.innerHTML = `<span class="guest-user">${escapeHtml(msg.name)}</span><span class="guest-time">${d}</span><div class="guest-txt">${escapeHtml(msg.message)}</div>`;
+                div.innerHTML = `
+                    <div class="guest-header">
+                        <span class="guest-user">${escapeHtml(msg.name)}</span>
+                        <span class="guest-time">${d}</span>
+                    </div>
+                    <div class="guest-txt">${escapeHtml(msg.message)}</div>
+                `;
                 listDiv.appendChild(div);
             });
         } catch(e) {
-            listDiv.innerHTML = "Error loading messages. Check Supabase connection/Table name.";
+            listDiv.innerHTML = "Error loading messages.";
             console.error(e);
         }
     }
@@ -343,12 +368,11 @@
         if(!nameVal || !msgVal) return alert("Please enter name and message.");
         
         try {
-            // [Updated] Table: circuitsim, Columns: name, message
             const { error } = await supabaseClient
                 .from('circuitsim')
                 .insert([{ name: nameVal, message: msgVal }]);
             if(error) throw error;
-            msgInp.value = ''; // clear message only
+            msgInp.value = '';
             loadMessages();
         } catch(e) {
             alert("Failed to send.");
@@ -362,20 +386,14 @@
     }
 
 
-    // --- DRAGGABLE MODAL (Unified) ---
+    // --- DRAGGABLE MODAL (Guide Only) ---
     const guideModal = document.getElementById("guide-modal");
     let activeModal = null;
     let isDragging = false, currentX, currentY, initialX, initialY, xOffset = 0, yOffset = 0;
 
-    // Add events for Guide
     const guideHeader = document.getElementById("guide-header-bar");
     guideHeader.addEventListener("mousedown", (e) => dragStart(e, guideModal));
     guideHeader.addEventListener("touchstart", (e) => dragStart(e, guideModal), {passive: false});
-
-    // Add events for Guestbook
-    const guestHeader = document.getElementById("guest-header-bar");
-    guestHeader.addEventListener("mousedown", (e) => dragStart(e, guestModal));
-    guestHeader.addEventListener("touchstart", (e) => dragStart(e, guestModal), {passive: false});
 
     document.addEventListener("mousemove", drag);
     document.addEventListener("mouseup", dragEnd);
@@ -473,7 +491,7 @@
     let curLang = 'ko'; 
     const texts = {
         ko: {
-            appTitle: "초보자를 위한 온라인 회로 시뮬레이터", langBtn: "🌐 English",
+            appTitle: "온라인 회로 시뮬레이터", langBtn: "🌐 English",
             nav_guestbook: "📝 방명록",
             t_grid: "그리드", t_file: "파일", t_mode: "모드", t_parts: "부품",
             b_save: "💾 저장", b_load: "📂 불러오기", b_steady: "⚡ 정상상태", b_reset: "초기화",
@@ -641,7 +659,7 @@
         else if(type==='T') {
             g.add(l([48, 5, 48, 35], 2)); g.add(l([52, 5, 52, 35], 2));
             g.add(l([0,20, 25,20, 25,10, 35,10], 2)); 
-            g.add(new Konva.Path({ data: "M35,10 c-6,0 -6,6 0,6 c-6,0 -6,6 0,6 c-6,0 -6,6 0,6 c-6,0 -6,6 0,6", stroke: '#333', strokeWidth: 2, lineCap: 'round', lineJoin: 'round' }));
+            g.add(new Konva.Path({ data: "M35,10 c-6,0 -6,6 0,6 c-6,0 -6,6 0,6 c-6,0 -6,6 0,6", stroke: '#333', strokeWidth: 2, lineCap: 'round', lineJoin: 'round' }));
             g.add(l([35,28, 35,32], 2)); g.add(l([28,32, 42,32], 2)); g.add(l([31,35, 39,35], 2)); g.add(l([34,38, 36,38], 2));
             g.add(l([100,20, 75,20, 75,10, 65,10], 2)); 
             g.add(new Konva.Path({ data: "M65,10 c6,0 6,6 0,6 c6,0 6,6 0,6 c6,0 6,6 0,6", stroke: '#333', strokeWidth: 2, lineCap: 'round', lineJoin: 'round' }));
