@@ -133,22 +133,15 @@
         .panel-header { padding: 5px 10px; font-size: 12px; }
     }
         
-      /* --- 방명록 스타일 추가 --- */
-    #guest-list { list-style: none; padding: 0; margin: 0; }
-    .guest-item { border-bottom: 1px solid #eee; padding: 8px 0; }
-    .guest-nick { font-weight: bold; color: #228be6; font-size: 12px; }
-    .guest-msg { color: #333; font-size: 12px; margin-top: 2px; }
-    .guest-time { color: #aaa; font-size: 10px; float: right; }
-    #guest-form { display: flex; gap: 5px; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 2px solid #eee; }
-    </style>
-  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+
+    </style>
+
 </head>
 <body>
 
 <div id="main-header">
     <div id="app-title">Online Circuit Simulator for Beginners</div>
     <div class="header-btns">
-        <button id="guest-btn" class="header-btn" onclick="toggleGuestbook()">🖊️ Guestbook</button>
         <button id="manual-btn" class="header-btn" onclick="toggleGuide()">📖 Manual</button>
         <button id="lang-btn" class="header-btn" onclick="toggleLanguage()">🌐 English</button>
     </div>
@@ -270,81 +263,8 @@
 </div>
 
 <script>
-// --- SUPABASE 설정 (여기에 본인 키 입력!) ---
-    const SUPABASE_URL = 'https://rhiaahzaftsfnbaywcby.supabase.co'; 
-    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJoaWFhaHphZnRzZm5iYXl3Y2J5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY0MDg4NzYsImV4cCI6MjA4MTk4NDg3Nn0.4v45-CJ3iLYRtpGPq2ml0QbWqItWTmHiPJtm5bbUSWs';
-    
-    // 변수명 충돌 방지를 위해 supabaseClient 사용
-    const supabaseClient = (typeof supabase !== 'undefined' && SUPABASE_URL && SUPABASE_KEY.startsWith('ey')) 
-                           ? supabase.createClient(SUPABASE_URL, SUPABASE_KEY) 
-                           : null;
 
-    // --- 방명록 관련 함수 ---
-    function toggleGuestbook() {
-        const m = document.getElementById('guest-modal');
-        if (m.style.display === "none") {
-            m.style.display = "flex";
-            // 화면 중앙 정렬
-            if(m.style.transform === "") {
-                const rect = m.getBoundingClientRect();
-                // (기존의 setTranslate 함수 활용)
-                if(typeof setTranslate === 'function') {
-                     setTranslate((window.innerWidth - rect.width)/2, (window.innerHeight - rect.height)/2, m);
-                }
-            }
-            loadGuestbook();
-        } else { m.style.display = "none"; }
-    }
-
-    async function loadGuestbook() {
-        if(!supabaseClient) {
-            document.getElementById('guest-list').innerHTML = '<li style="text-align:center; padding:10px;">Supabase Key Missing.</li>';
-            return;
-        }
-        // 테이블 이름 'guestbook' 확인
-        const { data, error } = await supabaseClient.from('circuitsim').select('*').order('created_at', { ascending: false }).limit(50);
-        if(error) {
-            console.error(error);
-            document.getElementById('guest-list').innerHTML = '<li style="color:red; text-align:center;">Load Error</li>';
-            return;
-        }
-        renderGuestList(data);
-    }
-
-    function renderGuestList(data) {
-        const ul = document.getElementById('guest-list');
-        ul.innerHTML = "";
-        if(!data || data.length === 0) {
-            ul.innerHTML = '<li style="text-align:center; padding:10px; color:#999;">No messages yet.</li>';
-            return;
-        }
-        data.forEach(item => {
-            const li = document.createElement('li');
-            li.className = 'guest-item';
-            const date = new Date(item.created_at).toLocaleDateString();
-            // 보안을 위해 HTML 이스케이프 처리
-            const nick = item.nickname.replace(/</g, "&lt;");
-            const msg = item.message.replace(/</g, "&lt;");
-            li.innerHTML = `<span class="guest-time">${date}</span><div class="guest-nick">${nick}</div><div class="guest-msg">${msg}</div>`;
-            ul.appendChild(li);
-        });
-    }
-
-    async function addGuestEntry() {
-        if(!supabaseClient) return alert("DB Not Connected");
-        const nick = document.getElementById('g-nick').value.trim();
-        const msg = document.getElementById('g-msg').value.trim();
-        if(!nick || !msg) return alert("Please fill all fields.");
-
-        const { error } = await supabaseClient.from('circuitsim').insert([{ nickname: nick, message: msg }]);
-        if(error) {
-            alert("Error: " + error.message);
-        } else {
-            document.getElementById('g-msg').value = '';
-            loadGuestbook(); 
-        }
-    }
-  
+  
     // --- DRAGGABLE MODAL (Mouse & Touch Support) ---
     const guideModal = document.getElementById("guide-modal");
     const guideHeader = document.getElementById("guide-header-bar");
@@ -471,7 +391,6 @@
     let curLang = 'ko'; 
     const texts = {
         ko: {
-            guestTitle: "🖊️ 방명록", btn_write: "남기기",
             appTitle: "초보자를 위한 온라인 회로 시뮬레이터", langBtn: "🌐 English",
             t_grid: "그리드", t_file: "파일", t_mode: "모드", t_parts: "부품",
             b_save: "💾 저장", b_load: "📂 불러오기", b_steady: "⚡ 정상상태", b_reset: "초기화",
@@ -483,8 +402,7 @@
             th_var: "변수/수식", th_mag: "Peak (Mag)", th_rms: "RMS", th_ph: "위상 (deg)"
         },
         en: {
-            guestTitle: "🖊️ Guestbook", btn_write: "Write", // <-- 추가됨
-            appTitle: "Online Circuit Simulator for Beginners", langBtn: "🌐 한국어",
+            appTitle: "Online Circuit Simulator for Beginners", langBtn: "🌐 한국어",
             t_grid: "GRID", t_file: "FILE", t_mode: "MODE", t_parts: "PARTS",
             b_save: "💾 Save", b_load: "📂 Load", b_steady: "⚡ Steady State", b_reset: "Reset All",
             b_run: "▶ Run", b_stop: "⏹ Stop",
@@ -1147,7 +1065,7 @@
     }
 
     updateText();
-  
+  
 </script>
 </body>
-</html> 
+</html>  
