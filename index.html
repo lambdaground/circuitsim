@@ -103,9 +103,27 @@
         #guest-list-area { flex: 1; overflow-y: auto; padding: 10px; background: #f8f9fa; }
         #guest-input-area { padding: 10px; background: #fff; border-top: 1px solid #dee2e6; display: flex; flex-direction: column; gap: 6px; }
         
-        .guest-msg { background: white; border: 1px solid #e9ecef; border-radius: 6px; padding: 8px; margin-bottom: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); position: relative; }
-        .guest-reply { margin-left: 20px; border-left: 3px solid #dee2e6; background: #fdfdfd; margin-top: 5px; } /* 답글 스타일 */
+        .guest-msg { 
+    background: white; 
+    border: 1px solid #e9ecef; 
+    border-radius: 6px; 
+    padding: 8px; 
+    margin-bottom: 8px; 
+    position: relative; 
+}
         
+        .guest-reply { margin-left: 20px; border-left: 3px solid #dee2e6; background: #fdfdfd; margin-top: 5px; } /* 답글 스타일 */
+        /* [추가됨] 답글을 감싸는 컨테이너 (자동 들여쓰기 역할) */
+.reply-container {
+    margin-left: 20px; /* 여기서 들여쓰기 간격 조절 */
+    border-left: 2px solid #f1f3f5; /* 계층 관계를 보여주는 선 */
+    padding-left: 5px;
+}
+
+/* 모바일에서는 너무 깊어지면 곤란하므로 간격 줄임 */
+@media screen and (max-width: 768px) {
+    .reply-container { margin-left: 10px; }
+}
         .guest-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
         .guest-user { font-weight: bold; color: #228be6; font-size: 11px; }
         .guest-time { font-size: 9px; color: #adb5bd; }
@@ -355,15 +373,18 @@
         document.getElementById("reply-indicator").style.display = 'none';
     }
 
+    // [완전 교체] 메시지 목록 불러오기 (트리 구조 변환)
     async function loadMessages() {
         const listDiv = document.getElementById("guest-list-area");
         listDiv.innerHTML = '<div style="text-align:center; padding:10px; color:#999;">Loading...</div>';
+        
         try {
-            // parent_id 포함하여 조회
+            // 1. 데이터 가져오기 (충분히 많이)
             const { data, error } = await supabaseClient
                 .from('circuitsim')
                 .select('*')
-                .order('created_at', { ascending: true }); // 날짜 오름차순으로 가져와서 JS에서 정렬
+                .order('created_at', { ascending: true }) // 날짜 오름차순 (과거->현재)
+                .limit(500); 
             
             if(error) throw error;
             
@@ -373,23 +394,79 @@
                  return;
             }
 
-            // 계층형 구조로 렌더링하기 위해 부모/자식 분리
-            const parents = data.filter(m => !m.parent_id).reverse(); // 최신순
-            const replies = data.filter(m => m.parent_id);
+            // 2. 데이터를 트리 구조로 변환 (ID 매핑)
+            const msgMap = {};
+            data.forEach(msg => { 
+                msg.children = []; // 자식들을 담을 배열 추가
+                msgMap[msg.id] = msg; 
+            });
 
-            parents.forEach(msg => {
-                listDiv.appendChild(createMsgElement(msg));
-                // 해당 글의 답글 찾기
-                const myReplies = replies.filter(r => r.parent_id === msg.id);
-                myReplies.forEach(reply => {
-                    listDiv.appendChild(createMsgElement(reply, true));
-                });
+            const roots = []; // 최상위 글(원글)들
+
+            data.forEach(msg => {
+                if (msg.parent_id && msgMap[msg.parent_id]) {
+                    // 부모가 있으면 부모의 children 배열에 넣음 (답글)
+                    msgMap[msg.parent_id].children.push(msg);
+                } else {
+                    // 부모가 없거나 찾을 수 없으면 최상위 글로 취급
+                    roots.push(msg);
+                }
+            });
+
+            // 3. 최신순 정렬 후 렌더링 (원글은 최신이 위로)
+            roots.reverse().forEach(rootMsg => {
+                listDiv.appendChild(renderMessageRecursive(rootMsg));
             });
 
         } catch(e) {
             listDiv.innerHTML = "Error loading messages.";
             console.error(e);
         }
+    }
+
+    // [추가됨] 재귀적으로 메시지와 답글을 그리는 함수
+    function renderMessageRecursive(msg) {
+        // 1. 현재 메시지 요소 생성
+        const msgDiv = document.createElement('div');
+        msgDiv.className = 'guest-msg';
+        
+        const d = new Date(msg.created_at).toLocaleString();
+        
+        // HTML 구성
+        let html = `
+            <div class="guest-header">
+                <span class="guest-user">${escapeHtml(msg.name)}</span>
+                <span class="guest-time">${d}</span>
+            </div>
+            <div class="guest-txt">${escapeHtml(msg.message)}</div>
+        `;
+        
+        // 답글 달기 버튼 (어떤 깊이에서도 가능)
+        // 이름에 따옴표가 있을 경우를 대비해 replace 처리
+        const safeName = escapeHtml(msg.name).replace(/'/g, "\\'");
+        html += `<button class="btn-reply-txt" onclick="setReply(${msg.id}, '${safeName}')">↳ Reply</button>`;
+        
+        msgDiv.innerHTML = html;
+
+        // 2. 자식(답글)이 있다면 처리
+        if (msg.children && msg.children.length > 0) {
+            const replyContainer = document.createElement('div');
+            replyContainer.className = 'reply-container'; // CSS에서 들여쓰기 적용됨
+            
+            // 자식들을 생성하여 컨테이너에 넣음 (재귀 호출)
+            msg.children.forEach(childMsg => {
+                replyContainer.appendChild(renderMessageRecursive(childMsg));
+            });
+            
+            // 현재 메시지 박스 바로 뒤에 답글 컨테이너를 붙일지, 안에 넣을지 결정
+            // 여기서는 시각적 구분을 위해 별도 컨테이너로 감싸서 반환
+            const wrapper = document.createElement('div');
+            wrapper.appendChild(msgDiv);
+            wrapper.appendChild(replyContainer);
+            return wrapper;
+        }
+
+        return msgDiv;
     }
 
     function createMsgElement(msg, isReply = false) {
