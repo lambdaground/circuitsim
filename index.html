@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Online Circuit Simulator (Responsive Header)</title>
+    <title>Online Circuit Simulator (Sidebar & Scroll)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
     <script src="https://unpkg.com/konva@9.2.0/konva.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -15,7 +15,7 @@
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-thumb { background: #adb5bd; border-radius: 4px; }
         
-        /* HEADER (Desktop Default) */
+        /* HEADER */
         #main-header { height: 50px; background: #343a40; color: white; display: flex; align-items: center; padding: 0 20px; flex-shrink: 0; position: relative; z-index: 100; transition: height 0.3s; }
         #app-title { font-size: 18px; font-weight: bold; position: absolute; left: 50%; transform: translateX(-50%); white-space: nowrap; }
         .header-btns { position: absolute; right: 20px; display: flex; gap: 10px; }
@@ -23,54 +23,66 @@
         .header-btn:hover { background: #6c757d; }
         .header-btn.active { background: #228be6; border-color: #228be6; }
 
-        /* LAYOUT */
+        /* LAYOUT (Desktop) */
         #app { display: flex; flex: 1; width: 100vw; overflow: hidden; }
         .pane { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
         
-        #left-pane { border-right: 4px solid #dee2e6; flex: 1.2; position: relative; } 
+        /* [수정] 왼쪽 패널 구조 변경 */
+        #left-pane { border-right: 4px solid #dee2e6; flex: 1.3; display: flex; flex-direction: column; } 
         #right-pane { flex: 1; display: flex; flex-direction: column; }
         
-        /* SIDEBAR */
+        /* [신규] 상단 섹션 (툴바 + 캔버스) 래퍼 */
+        #top-section {
+            flex: 1.2; /* 상단 영역 비율 */
+            display: flex; /* 가로 배치 (좌:툴바, 우:캔버스) */
+            border-bottom: 4px solid #dee2e6;
+            min-height: 0;
+            position: relative;
+        }
+
+        /* [수정] 툴바를 캔버스 왼쪽 고정 사이드바로 변경 */
+        #toolbar { 
+            width: 130px; 
+            background: #f1f3f5; 
+            border-right: 1px solid #dee2e6; 
+            padding: 10px; 
+            overflow-y: auto; 
+            display: flex;
+            flex-direction: column;
+            z-index: 5;
+        }
+
+        /* [수정] 캔버스 영역 */
+        #container { 
+            flex: 1; /* 남은 공간 차지 */
+            background: #f1f3f5; 
+            position: relative; 
+        }
+
+        /* 하단 결과 패널 */
+        #result-panel { flex: 0.8; background: white; padding: 0; overflow: hidden; display: flex; flex-direction: column; }
+
+        /* 오른쪽 패널 (그래프 + FFT) */
+        #graph-section { flex: 1.2; display: flex; flex-direction: column; border-bottom: 4px solid #dee2e6; padding: 10px; background: #fff; position: relative; min-height: 0; }
+        #fft-section { flex: 0.8; display: flex; flex-direction: column; background: #fff; overflow: hidden; position: relative; padding: 10px; }
+
+        /* 방명록 사이드바 */
         #guest-pane { 
-            width: 320px; 
-            background: #fff; 
-            border-left: 4px solid #dee2e6; 
-            display: flex; 
-            flex-direction: column; 
-            transition: width 0.3s ease;
-            overflow: hidden;
-            flex-shrink: 0;
+            width: 320px; background: #fff; border-left: 4px solid #dee2e6; 
+            display: flex; flex-direction: column; transition: width 0.3s ease; overflow: hidden; flex-shrink: 0;
         }
         #guest-pane.closed { width: 0; border-left: none; }
 
-        #container { height: 50%; width: 100%; min-height: 0; background: #f1f3f5; border-bottom: 4px solid #dee2e6; position: relative; }
-        #result-panel { height: 50%; background: white; padding: 0; overflow: hidden; display: flex; flex-direction: column; }
-        #graph-section { height: 50%; display: flex; flex-direction: column; border-bottom: 4px solid #dee2e6; padding: 10px; background: #fff; position: relative; min-height: 0; }
-        #fft-section { height: 50%; display: flex; flex-direction: column; background: #fff; overflow: hidden; position: relative; padding: 10px; }
-
-        /* TOOLBAR */
-        #toolbar { 
-            position: absolute; 
-            top: 15px; left: 15px; 
-            width: 140px; 
-            background: rgba(255,255,255,0.95); 
-            padding: 10px; 
-            border-radius: 8px; 
-            box-shadow: 0 4px 15px rgba(0,0,0,0.15); 
-            z-index: 10; 
-        }
-
-        /* Controls Style */
-        .tool-sec { margin-bottom: 8px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
-        .tool-tit { font-size: 10px; color: #888; font-weight: bold; margin-bottom: 4px; }
-        .btn { width: 100%; padding: 5px; margin-bottom: 4px; border: 1px solid #ced4da; background: #fff; border-radius: 4px; cursor: pointer; font-size: 11px; text-align: left; display: flex; align-items: center; transition: 0.1s; }
+        /* UI Common Styles */
+        .tool-sec { margin-bottom: 12px; border-bottom: 1px solid #dee2e6; padding-bottom: 8px; }
+        .tool-tit { font-size: 11px; color: #495057; font-weight: bold; margin-bottom: 6px; }
+        .btn { width: 100%; padding: 6px; margin-bottom: 4px; border: 1px solid #ced4da; background: #fff; border-radius: 4px; cursor: pointer; font-size: 11px; text-align: left; display: flex; align-items: center; transition: 0.1s; }
         .btn:hover { background: #e7f5ff; border-color: #339af0; }
         .btn-primary { background: #228be6; color: white; border: none; justify-content: center; font-weight: bold; }
         .btn-stop { background: #fa5252; color: white; border: none; justify-content: center; font-weight: bold; }
         .btn-util { background: #868e96; color: white; border: none; justify-content: center; font-weight: bold; }
         .badge { display: inline-block; width: 18px; text-align: center; margin-right: 5px; font-weight: 800; font-size: 10px; }
 
-        /* Graph Controls */
         #graph-controls { padding: 5px; background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 6px; margin-bottom: 5px; }
         .ctrl-row { display: flex; gap: 5px; align-items: center; margin-bottom: 2px; flex-wrap: wrap; }
         .ctrl-label { font-size: 11px; font-weight: 700; color: #555; width: 60px; }
@@ -90,34 +102,28 @@
         #p-bar { width:200px; height:6px; background:#ddd; border-radius:3px; margin-top:5px; overflow:hidden; }
         #p-fill { width:0%; height:100%; background:#228be6; transition:width 0.1s; }
 
-        /* Guide Modal */
+        /* Guestbook & Modal Styles */
         .modal { display: none; position: fixed; background: #fff; border: 1px solid #adb5bd; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); z-index: 1000; flex-direction: column; resize: both; overflow: hidden; }
         .modal-header { padding: 10px; background: #343a40; color: white; cursor: move; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
         .modal-body { flex: 1; padding: 15px; overflow-y: auto; font-size: 12px; line-height: 1.6; color: #333; background: #f8f9fa;}
         #guide-modal { width: 400px; height: 500px; top: 100px; left: 100px; }
         #guide-body ul { padding-left: 20px; margin: 0; }
         #guide-body li { margin-bottom: 6px; }
-
-        /* GUESTBOOK */
         #guest-list-area { flex: 1; overflow-y: auto; padding: 10px; background: #f8f9fa; }
         #guest-input-area { padding: 10px; background: #fff; border-top: 1px solid #dee2e6; display: flex; flex-direction: column; gap: 6px; }
-        
         .guest-msg { background: white; border: 1px solid #e9ecef; border-radius: 6px; padding: 8px; margin-bottom: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); position: relative; }
-        .guest-reply { margin-left: 20px; border-left: 2px solid #adb5bd; background: #fdfdfd; margin-top: 5px; }
         .reply-container { margin-left: 15px; border-left: 2px solid #e9ecef; padding-left: 5px; }
-
         .guest-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
         .guest-user { font-weight: bold; color: #228be6; font-size: 11px; }
         .guest-time { font-size: 9px; color: #adb5bd; }
         .guest-txt { font-size: 12px; color: #495057; word-break: break-all; margin-bottom: 4px; }
         .btn-reply-txt { font-size: 10px; color: #868e96; cursor: pointer; text-decoration: underline; border:none; background:none; padding:0; }
-        .btn-reply-txt:hover { color: #339af0; }
         .guest-inp { padding: 8px; border: 1px solid #ced4da; border-radius: 4px; font-size: 12px; width: 100%; }
         .guest-inp:focus { outline: none; border-color: #228be6; }
         #reply-indicator { display: none; background: #e7f5ff; color: #1c7ed6; font-size: 11px; padding: 5px; border-radius: 4px; align-items: center; justify-content: space-between; }
         #btn-cancel-reply { cursor: pointer; font-weight: bold; border:none; background:none; color:#1c7ed6; }
 
-        /* FFT Controls */
+        /* FFT controls */
         #fft-controls { display:flex; gap:5px; align-items:center; font-size:11px; margin-bottom: 5px; flex-wrap: wrap; background: #f1f3f5; padding: 5px; border-radius: 5px;}
         #fft-chart-area { flex:1; position:relative; min-height:0; border-bottom:1px solid #eee; margin-bottom:5px;}
         #fft-peaks-area { height: 120px; overflow-y:auto; font-size:11px; border: 1px solid #dee2e6; }
@@ -127,59 +133,75 @@
         .peak-table tr:hover { background:#f1f3f5; cursor:pointer; }
         .peak-row-active { background:#ffec99 !important; font-weight:bold; }
 
-    /* --- MOBILE RESPONSIVE STYLES (Fix for overlapping header) --- */
+    /* ========================================= */
+    /* 📱 MOBILE RESPONSIVE STYLES (IMPROVED) */
+    /* ========================================= */
     @media screen and (max-width: 768px) {
-        /* 1. Header Layout Change */
-        #main-header {
-            height: auto; /* Allow header to grow */
-            flex-direction: column; /* Stack items vertically */
-            padding: 10px; /* Add space around */
-            justify-content: center;
+        /* 1. 전체 레이아웃: 스크롤 허용 */
+        body { overflow-y: auto; height: auto; } /* Body 스크롤 허용 */
+        #app { 
+            flex-direction: column; 
+            height: auto; /* 고정 높이 해제 -> 내용만큼 늘어남 */
+            overflow: visible; 
         }
 
-        /* 2. Title Position */
-        #app-title {
-            position: static; /* Remove absolute positioning */
-            transform: none; /* Remove centering transform */
-            margin-bottom: 10px; /* Space below title */
-            text-align: center;
-        }
-
-        /* 3. Buttons Position */
-        .header-btns {
-            position: static; /* Remove absolute positioning */
-            width: 100%;
-            justify-content: center; /* Center buttons */
-        }
-
-        /* 4. App Layout */
-        #app { flex-direction: column; height: 100vh; overflow-y: auto; }
-        .pane { width: 100%; flex: none; }
+        /* 2. 패널 사이즈: 높이 제한 해제 */
+        .pane { width: 100%; flex: none; height: auto; }
         
-        #left-pane { height: 55vh; border-right: none; border-bottom: 4px solid #dee2e6; display: flex; flex-direction: column; }
-        #right-pane { height: 45vh; display: flex; flex-direction: column; }
-        
-        /* 5. Guestbook Mobile Drawer (Full Screen or Overlay) */
-        #guest-pane { 
-            position: fixed; 
-            top: 0; right: 0; bottom: 0; left: 0; /* Cover full screen */
-            width: 100%; /* Full width */
-            z-index: 200; /* Above everything */
-            box-shadow: none;
-        }
-        #guest-pane.closed { width: 0; left: 100%; } /* Slide out */
+        #left-pane { border-right: none; border-bottom: 4px solid #dee2e6; }
+        #right-pane { display: flex; flex-direction: column; }
 
-        /* Misc Mobile Adjustments */
-        #toolbar { top: 5px; left: 5px; width: 110px; padding: 5px; max-height: 60vh; overflow-y: auto; }
-        .tool-tit { font-size: 9px; }
-        .btn { font-size: 10px; padding: 4px; }
-        .ctrl-row { flex-wrap: wrap; gap: 8px; }
-        .ctrl-label { width: auto; margin-right: 5px; }
-        .inp { width: 50px; font-size: 12px; padding: 5px; }
-        .btn-primary, .btn-stop { padding: 8px; }
-        #guide-modal { width: 90% !important; height: 70% !important; top: 15% !important; left: 5% !important; transform: none !important; }
-        body { font-size: 14px; }
-        .panel-header { padding: 5px 10px; font-size: 12px; }
+        /* 3. 섹션별 최소 높이 보장 (그래프 찌그러짐 방지) */
+        /* 상단 (툴바+캔버스) */
+        #top-section {
+            flex-direction: column; /* 모바일: 툴바 위, 캔버스 아래 */
+            height: auto;
+        }
+        
+        #toolbar {
+            width: 100%; /* 툴바 가로 꽉 차게 */
+            height: auto; /* 높이 자동 */
+            max-height: 150px; /* 너무 길면 스크롤 */
+            border-right: none;
+            border-bottom: 1px solid #dee2e6;
+            flex-direction: row; /* 버튼들 가로로 배치 */
+            flex-wrap: wrap; /* 줄바꿈 허용 */
+            gap: 10px;
+        }
+        .tool-sec { border-bottom: none; border-right: 1px solid #eee; padding-right: 10px; margin-bottom: 0; padding-bottom: 0; }
+        
+        /* 캔버스 높이 확보 */
+        #container { 
+            height: 400px !important; /* 🌟 최소 높이 확보 */
+            min-height: 400px;
+        }
+
+        /* 결과 패널 */
+        #result-panel { 
+            height: auto; 
+            min-height: 300px; /* 결과창 최소 높이 */
+        }
+
+        /* 그래프 섹션 */
+        #graph-section { 
+            height: 450px !important; /* 🌟 그래프 최소 높이 확보 */
+            min-height: 450px;
+        }
+
+        /* FFT 섹션 */
+        #fft-section { 
+            height: 400px !important; /* 🌟 FFT 최소 높이 확보 */
+            min-height: 400px;
+        }
+
+        /* 헤더 모바일 스타일 */
+        #main-header { height: auto; flex-direction: column; padding: 10px; justify-content: center; }
+        #app-title { position: static; transform: none; margin-bottom: 10px; text-align: center; }
+        .header-btns { position: static; width: 100%; justify-content: center; }
+
+        /* 방명록 (전체 화면 덮기) */
+        #guest-pane { position: fixed; top: 0; right: 0; bottom: 0; left: 0; width: 100%; z-index: 200; }
+        #guest-pane.closed { width: 0; left: 100%; }
     }
     </style>
 </head>
@@ -206,7 +228,42 @@
 
 <div id="app">
     <div id="left-pane" class="pane">
-        <div id="container"></div>
+        
+        <div id="top-section">
+            <div id="toolbar">
+                <div class="tool-sec">
+                    <div class="tool-tit" data-txt="t_grid">GRID</div>
+                    <div style="display:flex; gap:5px;">
+                        <button class="btn" style="justify-content:center;" onclick="updateRailCount(-1)">-</button>
+                        <button class="btn" style="justify-content:center;" onclick="updateRailCount(1)">+</button>
+                    </div>
+                </div>
+                <div class="tool-sec">
+                    <div class="tool-tit" data-txt="t_file">FILE</div>
+                    <button class="btn btn-util" onclick="saveCircuit()"><span data-txt="b_save">💾 Save</span></button>
+                    <button class="btn btn-util" onclick="document.getElementById('fileInput').click()"><span data-txt="b_load">📂 Load</span></button>
+                    <input type="file" id="fileInput" style="display:none" onchange="loadCircuit(this)">
+                </div>
+                <div class="tool-sec">
+                    <div class="tool-tit" data-txt="t_mode">MODE</div>
+                    <button class="btn btn-primary" onclick="runSteady()"><span data-txt="b_steady">⚡ Steady State</span></button>
+                </div>
+                <div class="tool-sec">
+                    <div class="tool-tit" data-txt="t_parts">PARTS</div>
+                    <button class="btn" onclick="spawn('V_DC')"><span class="badge" style="color:#e03131">V</span>DC</button>
+                    <button class="btn" onclick="spawn('V_AC')"><span class="badge" style="color:#1971c2">~</span>AC</button>
+                    <button class="btn" onclick="spawn('I_AC')"><span class="badge" style="color:#1098ad">I</span>AC</button>
+                    <button class="btn" onclick="spawn('R')"><span class="badge">R</span>Res</button>
+                    <button class="btn" onclick="spawn('L')"><span class="badge">L</span>Ind</button>
+                    <button class="btn" onclick="spawn('C')"><span class="badge">C</span>Cap</button>
+                    <button class="btn" onclick="spawn('T')"><span class="badge" style="color:#f08c00">T</span>Trans</button>
+                </div>
+                <button class="btn" style="justify-content:center; background:#f8f9fa;" onclick="resetAll()"><span data-txt="b_reset">Reset All</span></button>
+            </div>
+
+            <div id="container"></div>
+        </div>
+
         <div id="result-panel">
             <div class="panel-header"><span data-txt="resTitle">📊 C. Steady State Analysis</span></div>
             <div id="custom-calc-area">
@@ -215,36 +272,6 @@
                 <button class="btn btn-primary" style="width:auto; margin:0; padding:4px 8px;" onclick="addCustomFormula()">Add</button>
             </div>
             <div id="res-content"><div style="color:#888; font-size:11px; text-align:center; padding-top:40px;" data-txt="resPlaceholder">Press [⚡ Steady State] to see results.</div></div>
-        </div>
-        <div id="toolbar">
-            <div class="tool-sec">
-                <div class="tool-tit" data-txt="t_grid">GRID</div>
-                <div style="display:flex; gap:5px;">
-                    <button class="btn" style="justify-content:center;" onclick="updateRailCount(-1)">-</button>
-                    <button class="btn" style="justify-content:center;" onclick="updateRailCount(1)">+</button>
-                </div>
-            </div>
-            <div class="tool-sec">
-                <div class="tool-tit" data-txt="t_file">FILE</div>
-                <button class="btn btn-util" onclick="saveCircuit()"><span data-txt="b_save">💾 Save</span></button>
-                <button class="btn btn-util" onclick="document.getElementById('fileInput').click()"><span data-txt="b_load">📂 Load</span></button>
-                <input type="file" id="fileInput" style="display:none" onchange="loadCircuit(this)">
-            </div>
-            <div class="tool-sec">
-                <div class="tool-tit" data-txt="t_mode">MODE</div>
-                <button class="btn btn-primary" onclick="runSteady()"><span data-txt="b_steady">⚡ Steady State</span></button>
-            </div>
-            <div class="tool-sec">
-                <div class="tool-tit" data-txt="t_parts">PARTS</div>
-                <button class="btn" onclick="spawn('V_DC')"><span class="badge" style="color:#e03131">V</span>DC</button>
-                <button class="btn" onclick="spawn('V_AC')"><span class="badge" style="color:#1971c2">~</span>AC</button>
-                <button class="btn" onclick="spawn('I_AC')"><span class="badge" style="color:#1098ad">I</span>AC</button>
-                <button class="btn" onclick="spawn('R')"><span class="badge">R</span>Res</button>
-                <button class="btn" onclick="spawn('L')"><span class="badge">L</span>Ind</button>
-                <button class="btn" onclick="spawn('C')"><span class="badge">C</span>Cap</button>
-                <button class="btn" onclick="spawn('T')"><span class="badge" style="color:#f08c00">T</span>Trans</button>
-            </div>
-            <button class="btn" style="justify-content:center; background:#f8f9fa;" onclick="resetAll()"><span data-txt="b_reset">Reset All</span></button>
         </div>
     </div>
 
@@ -285,7 +312,7 @@
         
         <div id="fft-section">
             <div class="panel-header" style="background:#fff; padding-left:0; border:none; margin-bottom:5px;">
-                <span style="font-weight:bold;">📊 FFT Spectrum</span>
+                <span style="font-weight:bold;">📊 C-2. FFT Spectrum</span>
                 <button class="btn-util" style="font-size:10px; padding:2px 6px; width:auto;" onclick="performFFT()">🔄 Update</button>
             </div>
             <div id="fft-controls">
@@ -769,7 +796,7 @@
         else if(type==='T') {
             g.add(l([48, 5, 48, 35], 2)); g.add(l([52, 5, 52, 35], 2));
             g.add(l([0,20, 25,20, 25,10, 35,10], 2)); 
-            g.add(new Konva.Path({ data: "M35,10 c-6,0 -6,6 0,6 c-6,0 -6,6 0,6 c-6,0 -6,6 0,6 c-6,0 -6,6 0,6", stroke: '#333', strokeWidth: 2, lineCap: 'round', lineJoin: 'round' }));
+            g.add(new Konva.Path({ data: "M35,10 c-6,0 -6,6 0,6 c-6,0 -6,6 0,6 c-6,0 -6,6 0,6", stroke: '#333', strokeWidth: 2, lineCap: 'round', lineJoin: 'round' }));
             g.add(l([35,28, 35,32], 2)); g.add(l([28,32, 42,32], 2)); g.add(l([31,35, 39,35], 2)); g.add(l([34,38, 36,38], 2));
             g.add(l([100,20, 75,20, 75,10, 65,10], 2)); 
             g.add(new Konva.Path({ data: "M65,10 c6,0 6,6 0,6 c6,0 6,6 0,6 c6,0 6,6 0,6", stroke: '#333', strokeWidth: 2, lineCap: 'round', lineJoin: 'round' }));
@@ -1025,7 +1052,7 @@
         pOv.style.display='none';
         
         lastSimResult = { dt, resV, resI, N, map };
-        drawChart(timeLog, resV, resI, N, map, sc, u);
+        drawChart(timeLog, resV, resI, N, map, scale, unitStr);
         
         updateFFTSources();
         performFFT();
