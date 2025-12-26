@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Online Circuit Simulator (Final Layout)</title>
+    <title>Online Circuit Simulator</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
     <script src="https://unpkg.com/konva@9.2.0/konva.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -27,20 +27,18 @@
         #app { display: flex; flex: 1; width: 100vw; overflow: hidden; }
         .pane { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
         
-        /* [수정] 왼쪽 패널 구조 변경 */
         #left-pane { border-right: 4px solid #dee2e6; flex: 1.3; display: flex; flex-direction: column; } 
         #right-pane { flex: 1; display: flex; flex-direction: column; }
         
-        /* [신규] 상단 섹션 (툴바 + 캔버스) 래퍼 */
         #top-section {
-            flex: 1.2; /* 상단 영역 비율 */
-            display: flex; /* 가로 배치 (좌:툴바, 우:캔버스) */
+            flex: 1.5; 
+            display: flex; 
             border-bottom: 4px solid #dee2e6;
             min-height: 0;
             position: relative;
         }
 
-        /* [수정] 툴바를 캔버스 왼쪽 고정 사이드바로 변경 */
+        /* [DESKTOP TOOLBAR] */
         #toolbar { 
             width: 130px; 
             background: #f1f3f5; 
@@ -52,28 +50,28 @@
             z-index: 5;
         }
 
-        /* [수정] 캔버스 영역 */
+        /* Canvas */
         #container { 
-            flex: 1; /* 남은 공간 차지 */
+            flex: 1; 
             background: #f1f3f5; 
             position: relative; 
         }
 
-        /* 하단 결과 패널 */
+        /* Result Panel */
         #result-panel { flex: 0.8; background: white; padding: 0; overflow: hidden; display: flex; flex-direction: column; }
 
-        /* 오른쪽 패널 (그래프 + FFT) */
+        /* Right Panel */
         #graph-section { flex: 1.2; display: flex; flex-direction: column; border-bottom: 4px solid #dee2e6; padding: 10px; background: #fff; position: relative; min-height: 0; }
         #fft-section { flex: 0.8; display: flex; flex-direction: column; background: #fff; overflow: hidden; position: relative; padding: 10px; }
 
-        /* 방명록 사이드바 */
+        /* Guestbook Sidebar */
         #guest-pane { 
             width: 320px; background: #fff; border-left: 4px solid #dee2e6; 
             display: flex; flex-direction: column; transition: width 0.3s ease; overflow: hidden; flex-shrink: 0;
         }
         #guest-pane.closed { width: 0; border-left: none; }
 
-        /* UI Common Styles */
+        /* Common UI */
         .tool-sec { margin-bottom: 12px; border-bottom: 1px solid #dee2e6; padding-bottom: 8px; }
         .tool-tit { font-size: 11px; color: #495057; font-weight: bold; margin-bottom: 6px; }
         .btn { width: 100%; padding: 6px; margin-bottom: 4px; border: 1px solid #ced4da; background: #fff; border-radius: 4px; cursor: pointer; font-size: 11px; text-align: left; display: flex; align-items: center; transition: 0.1s; }
@@ -102,7 +100,7 @@
         #p-bar { width:200px; height:6px; background:#ddd; border-radius:3px; margin-top:5px; overflow:hidden; }
         #p-fill { width:0%; height:100%; background:#228be6; transition:width 0.1s; }
 
-        /* Guestbook & Modal Styles */
+        /* Guide Modal */
         .modal { display: none; position: fixed; background: #fff; border: 1px solid #adb5bd; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); z-index: 1000; flex-direction: column; resize: both; overflow: hidden; }
         .modal-header { padding: 10px; background: #343a40; color: white; cursor: move; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
         .modal-body { flex: 1; padding: 15px; overflow-y: auto; font-size: 12px; line-height: 1.6; color: #333; background: #f8f9fa;}
@@ -134,72 +132,86 @@
         .peak-row-active { background:#ffec99 !important; font-weight:bold; }
 
     /* ========================================= */
-    /* 📱 MOBILE RESPONSIVE STYLES (IMPROVED) */
+    /* 📱 MOBILE RESPONSIVE FIXES (Adjusted) */
     /* ========================================= */
     @media screen and (max-width: 768px) {
-        /* 1. 전체 레이아웃: 스크롤 허용 */
-        body { overflow-y: auto; height: auto; } /* Body 스크롤 허용 */
-        #app { 
-            flex-direction: column; 
-            height: auto; /* 고정 높이 해제 -> 내용만큼 늘어남 */
-            overflow: visible; 
-        }
-
-        /* 2. 패널 사이즈: 높이 제한 해제 */
+        body { overflow-y: auto; height: auto; }
+        #app { flex-direction: column; height: auto; overflow: visible; }
         .pane { width: 100%; flex: none; height: auto; }
-        
         #left-pane { border-right: none; border-bottom: 4px solid #dee2e6; }
         #right-pane { display: flex; flex-direction: column; }
 
-        /* 3. 섹션별 최소 높이 보장 (그래프 찌그러짐 방지) */
-        /* 상단 (툴바+캔버스) */
+        /* 1. 상단 섹션: 툴바 위, 캔버스 아래 */
         #top-section {
-            flex-direction: column; /* 모바일: 툴바 위, 캔버스 아래 */
+            flex-direction: column; 
             height: auto;
         }
         
+        /* 2. [수정됨] 툴바 (A 영역) 높이 증가 */
         #toolbar {
-            width: 100%; /* 툴바 가로 꽉 차게 */
-            height: auto; /* 높이 자동 */
-            max-height: 150px; /* 너무 길면 스크롤 */
+            width: 100%; 
+            height: auto; 
+            max-height: none; /* 높이 제한 해제 -> 내용만큼 늘어남 */
+            min-height: 250px; /* 최소 높이 보장 */
             border-right: none;
             border-bottom: 1px solid #dee2e6;
-            flex-direction: row; /* 버튼들 가로로 배치 */
-            flex-wrap: wrap; /* 줄바꿈 허용 */
-            gap: 10px;
+            
+            /* 가로 배치 flex */
+            display: flex;
+            flex-direction: row; 
+            flex-wrap: wrap; 
+            align-items: flex-start;
+            gap: 8px;
+            padding: 8px;
         }
-        .tool-sec { border-bottom: none; border-right: 1px solid #eee; padding-right: 10px; margin-bottom: 0; padding-bottom: 0; }
         
-        /* 캔버스 높이 확보 */
+        /* 툴바 섹션들 */
+        .tool-sec { 
+            border-bottom: none; 
+            border-right: 1px solid #eee; 
+            padding-right: 8px; 
+            margin-bottom: 0; 
+            padding-bottom: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        
+        /* 부품(PARTS) 영역 스타일 */
+        .tool-sec:nth-child(4) { 
+            border-right: none;
+            flex: 1 0 100%; 
+            display: block; 
+            margin-top: 5px;
+            border-top: 1px solid #eee;
+            padding-top: 5px;
+        }
+        .tool-sec:nth-child(4) .tool-tit { display: inline-block; margin-right: 10px; vertical-align: middle; }
+        .tool-sec:nth-child(4) .btn {
+            display: inline-block;
+            width: auto; 
+            padding: 6px 12px;
+            margin-right: 5px;
+            margin-bottom: 5px;
+        }
+
+        /* 3. [수정됨] 캔버스 (B 영역) 높이 축소 */
         #container { 
-            height: 400px !important; /* 🌟 최소 높이 확보 */
-            min-height: 400px;
+            height: 180px !important; /* 더 줄임 (250px -> 180px) */
+            min-height: 180px;
         }
 
-        /* 결과 패널 */
-        #result-panel { 
-            height: auto; 
-            min-height: 300px; /* 결과창 최소 높이 */
-        }
+        /* 결과 패널 등 나머지 높이 */
+        #result-panel { height: auto; min-height: 300px; }
+        #graph-section { height: 450px !important; min-height: 450px; }
+        #fft-section { height: 400px !important; min-height: 400px; }
 
-        /* 그래프 섹션 */
-        #graph-section { 
-            height: 450px !important; /* 🌟 그래프 최소 높이 확보 */
-            min-height: 450px;
-        }
-
-        /* FFT 섹션 */
-        #fft-section { 
-            height: 400px !important; /* 🌟 FFT 최소 높이 확보 */
-            min-height: 400px;
-        }
-
-        /* 헤더 모바일 스타일 */
+        /* 헤더 */
         #main-header { height: auto; flex-direction: column; padding: 10px; justify-content: center; }
         #app-title { position: static; transform: none; margin-bottom: 10px; text-align: center; }
         .header-btns { position: static; width: 100%; justify-content: center; }
 
-        /* 방명록 (전체 화면 덮기) */
+        /* 방명록 */
         #guest-pane { position: fixed; top: 0; right: 0; bottom: 0; left: 0; width: 100%; z-index: 200; }
         #guest-pane.closed { width: 0; left: 100%; }
     }
@@ -218,7 +230,7 @@
 
 <div id="guide-modal" class="modal">
     <div id="guide-header-bar" class="modal-header">
-        <span style="font-weight:bold;" data-txt="guideTitle">📘 D. App User Guide</span>
+        <span style="font-weight:bold;" data-txt="guideTitle">📘 App User Guide</span>
         <button style="background:none; border:none; color:white; font-weight:bold; cursor:pointer;" onclick="toggleGuide()">✕</button>
     </div>
     <div id="guide-body" class="modal-body">
@@ -228,7 +240,6 @@
 
 <div id="app">
     <div id="left-pane" class="pane">
-        
         <div id="top-section">
             <div id="toolbar">
                 <div class="tool-sec">
@@ -260,12 +271,11 @@
                 </div>
                 <button class="btn" style="justify-content:center; background:#f8f9fa;" onclick="resetAll()"><span data-txt="b_reset">Reset All</span></button>
             </div>
-
             <div id="container"></div>
         </div>
 
         <div id="result-panel">
-            <div class="panel-header"><span data-txt="resTitle">📊 C. Steady State Analysis</span></div>
+            <div class="panel-header"><span data-txt="resTitle">📊 Steady State Analysis</span></div>
             <div id="custom-calc-area">
                 <span style="font-size:11px; font-weight:bold; color:#555;">Formula:</span>
                 <input type="text" id="formula-inp" placeholder="e.g. V(N2)*conj(I(L1))">
@@ -278,7 +288,7 @@
     <div id="right-pane" class="pane">
         <div id="graph-section">
             <div class="panel-header" style="background:#fff; padding-left:0; border:none; margin-bottom:5px;">
-                <span data-txt="transTitle">📈 B. Transient Simulation</span>
+                <span data-txt="transTitle">📈 Transient Analysis</span>
                 <button style="font-size:10px; padding:2px 6px; background:#fab005; border:none; border-radius:3px; color:white; font-weight:bold; cursor:pointer;" onclick="autoSetParams()">✨ Auto Scale</button>
             </div>
             <div id="graph-controls">
@@ -1052,7 +1062,7 @@
         pOv.style.display='none';
         
         lastSimResult = { dt, resV, resI, N, map };
-        drawChart(timeLog, resV, resI, N, map, sc, u);
+        drawChart(timeLog, resV, resI, N, map, scale, unitStr);
         
         updateFFTSources();
         performFFT();
