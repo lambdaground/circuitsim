@@ -128,7 +128,7 @@
 <div id="main-header">
     <div id="app-title">Online Circuit Simulator for Beginners</div>
     <div class="header-btns">
-        //<button id="guest-btn" class="header-btn" onclick="toggleGuestbook()">📝 Guestbook</button>//
+        <button id="guest-btn" class="header-btn" onclick="toggleGuestbook()"><span data-txt="nav_guestbook">📝 Guestbook</span></button>
         <button id="manual-btn" class="header-btn" onclick="toggleGuide()">📖 Manual</button>
         <button id="lang-btn" class="header-btn" onclick="toggleLanguage()">🌐 English</button>
     </div>
@@ -146,14 +146,14 @@
 
 <div id="guest-modal" class="modal">
     <div id="guest-header-bar" class="modal-header">
-        <span style="font-weight:bold;">📝 Guestbook (Supabase)</span>
+        <span style="font-weight:bold;">📝 Guestbook</span>
         <button style="background:none; border:none; color:white; font-weight:bold; cursor:pointer;" onclick="toggleGuestbook()">✕</button>
     </div>
     <div class="modal-body" style="display:flex; flex-direction:column;">
         <div id="guest-list">Loading...</div>
         <div id="guest-form">
-            <input type="text" id="g-name" class="guest-inp" placeholder="Name (Nickname)">
-            <input type="text" id="g-msg" class="guest-inp" placeholder="Leave a message...">
+            <input type="text" id="g-name" class="guest-inp" placeholder="Name">
+            <input type="text" id="g-msg" class="guest-inp" placeholder="Message">
             <button class="btn btn-primary" style="justify-content:center;" onclick="postMessage()">Submit</button>
         </div>
     </div>
@@ -266,17 +266,18 @@
 
 <script>
     // =========================================================================
-    // 🔴 SUPABASE CONFIGURATION (반드시 자신의 값으로 변경하세요)
+    // 🔴 SUPABASE CONFIGURATION
     // =========================================================================
     const supabaseUrl = 'https://rhiaahzaftsfnbaywcby.supabase.co';
     const supabaseKey = 'sb_publishable_iDFJ6pJRKCbwaE1SQleLMg_mOHD8Q4z';
     // =========================================================================
     
     let supabaseClient = null;
+    const { createClient } = supabase;
     
     try {
-        if(supabaseUrl !== 'YOUR_SUPABASE_URL' && typeof supabase !== 'undefined') {
-            supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+        if(supabaseUrl && supabaseKey) {
+            supabaseClient = createClient(supabaseUrl, supabaseKey);
         }
     } catch(e) { console.error("Supabase Init Error:", e); }
 
@@ -284,7 +285,7 @@
     
     function toggleGuestbook() {
         if(!supabaseClient) {
-            alert("Supabase 설정이 필요합니다. HTML 코드 상단의 supabaseUrl, supabaseKey를 입력해주세요.");
+            alert("Supabase not initialized.");
             return;
         }
         if (guestModal.style.display === "none") {
@@ -304,6 +305,7 @@
         const listDiv = document.getElementById("guest-list");
         listDiv.innerHTML = "Loading...";
         try {
+            // [Updated] Table: circuitsim, Columns: name, message
             const { data, error } = await supabaseClient
                 .from('circuitsim')
                 .select('*')
@@ -313,15 +315,21 @@
             if(error) throw error;
             
             listDiv.innerHTML = "";
+            if (!data || data.length === 0) {
+                 listDiv.innerHTML = `<div style="text-align:center;color:#888;padding:20px;">No messages yet.</div>`;
+                 return;
+            }
+
             data.forEach(msg => {
                 const d = new Date(msg.created_at).toLocaleString();
                 const div = document.createElement('div');
                 div.className = 'guest-msg';
-                div.innerHTML = `<span class="guest-user">${escapeHtml(msg.username)}</span><span class="guest-time">${d}</span><div class="guest-txt">${escapeHtml(msg.content)}</div>`;
+                // Using 'name' and 'message' from DB
+                div.innerHTML = `<span class="guest-user">${escapeHtml(msg.name)}</span><span class="guest-time">${d}</span><div class="guest-txt">${escapeHtml(msg.message)}</div>`;
                 listDiv.appendChild(div);
             });
         } catch(e) {
-            listDiv.innerHTML = "Error loading messages. Check Supabase connection.";
+            listDiv.innerHTML = "Error loading messages. Check Supabase connection/Table name.";
             console.error(e);
         }
     }
@@ -329,17 +337,18 @@
     async function postMessage() {
         const nameInp = document.getElementById('g-name');
         const msgInp = document.getElementById('g-msg');
-        const username = nameInp.value.trim();
-        const content = msgInp.value.trim();
+        const nameVal = nameInp.value.trim();
+        const msgVal = msgInp.value.trim();
         
-        if(!username || !content) return alert("Please enter name and message.");
+        if(!nameVal || !msgVal) return alert("Please enter name and message.");
         
         try {
+            // [Updated] Table: circuitsim, Columns: name, message
             const { error } = await supabaseClient
                 .from('circuitsim')
-                .insert([{ username, content }]);
+                .insert([{ name: nameVal, message: msgVal }]);
             if(error) throw error;
-            msgInp.value = '';
+            msgInp.value = ''; // clear message only
             loadMessages();
         } catch(e) {
             alert("Failed to send.");
@@ -376,10 +385,9 @@
     function toggleGuide() {
         if (guideModal.style.display === "none") {
             guideModal.style.display = "flex";
-            // Initial Centering Logic (Simplified)
             const rect = guideModal.getBoundingClientRect();
-            if(rect.top === 100 && rect.left === 100) { // Default css pos
-                 // Leave as is or center logic
+            if(rect.top === 100 && rect.left === 100) { 
+                 // Default pos
             }
         } else { guideModal.style.display = "none"; }
     }
@@ -466,6 +474,7 @@
     const texts = {
         ko: {
             appTitle: "초보자를 위한 온라인 회로 시뮬레이터", langBtn: "🌐 English",
+            nav_guestbook: "📝 방명록",
             t_grid: "그리드", t_file: "파일", t_mode: "모드", t_parts: "부품",
             b_save: "💾 저장", b_load: "📂 불러오기", b_steady: "⚡ 정상상태", b_reset: "초기화",
             b_run: "▶ 실행", b_stop: "⏹ 정지",
@@ -477,6 +486,7 @@
         },
         en: {
             appTitle: "Online Circuit Simulator for Beginners", langBtn: "🌐 한국어",
+            nav_guestbook: "📝 Guestbook",
             t_grid: "GRID", t_file: "FILE", t_mode: "MODE", t_parts: "PARTS",
             b_save: "💾 Save", b_load: "📂 Load", b_steady: "⚡ Steady State", b_reset: "Reset All",
             b_run: "▶ Run", b_stop: "⏹ Stop",
@@ -631,7 +641,7 @@
         else if(type==='T') {
             g.add(l([48, 5, 48, 35], 2)); g.add(l([52, 5, 52, 35], 2));
             g.add(l([0,20, 25,20, 25,10, 35,10], 2)); 
-            g.add(new Konva.Path({ data: "M35,10 c-6,0 -6,6 0,6 c-6,0 -6,6 0,6 c-6,0 -6,6 0,6", stroke: '#333', strokeWidth: 2, lineCap: 'round', lineJoin: 'round' }));
+            g.add(new Konva.Path({ data: "M35,10 c-6,0 -6,6 0,6 c-6,0 -6,6 0,6 c-6,0 -6,6 0,6 c-6,0 -6,6 0,6", stroke: '#333', strokeWidth: 2, lineCap: 'round', lineJoin: 'round' }));
             g.add(l([35,28, 35,32], 2)); g.add(l([28,32, 42,32], 2)); g.add(l([31,35, 39,35], 2)); g.add(l([34,38, 36,38], 2));
             g.add(l([100,20, 75,20, 75,10, 65,10], 2)); 
             g.add(new Konva.Path({ data: "M65,10 c6,0 6,6 0,6 c6,0 6,6 0,6 c6,0 6,6 0,6", stroke: '#333', strokeWidth: 2, lineCap: 'round', lineJoin: 'round' }));
