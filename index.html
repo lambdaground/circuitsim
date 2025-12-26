@@ -1,1071 +1,1104 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Circuit v45 (Custom Formula & RMS)</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
-    <script src="https://unpkg.com/konva@9.2.0/konva.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    
-    <style>
-        body { margin: 0; padding: 0; overflow: hidden; background: #f8f9fa; font-family: 'Segoe UI', sans-serif; user-select: none; display: flex; flex-direction: column; height: 100vh; }
-        * { box-sizing: border-box; }
-        ::-webkit-scrollbar { width: 8px; height: 8px; }
-        ::-webkit-scrollbar-thumb { background: #adb5bd; border-radius: 4px; }
-        
-        /* HEADER */
-        #main-header { height: 50px; background: #343a40; color: white; display: flex; align-items: center; padding: 0 20px; flex-shrink: 0; position: relative; }
-        #app-title { font-size: 18px; font-weight: bold; position: absolute; left: 50%; transform: translateX(-50%); }
-        .header-btns { position: absolute; right: 20px; display: flex; gap: 10px; }
-        .header-btn { background: #495057; color: white; border: 1px solid #adb5bd; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; }
-        .header-btn:hover { background: #6c757d; }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Online Circuit Simulator</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
+    <script src="https://unpkg.com/konva@9.2.0/konva.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <style>
+        body { margin: 0; padding: 0; overflow: hidden; background: #f8f9fa; font-family: 'Segoe UI', sans-serif; user-select: none; display: flex; flex-direction: column; height: 100vh; }
+        * { box-sizing: border-box; }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-thumb { background: #adb5bd; border-radius: 4px; }
+        
+        /* HEADER */
+        #main-header { height: 50px; background: #343a40; color: white; display: flex; align-items: center; padding: 0 20px; flex-shrink: 0; position: relative; }
+        #app-title { font-size: 18px; font-weight: bold; position: absolute; left: 50%; transform: translateX(-50%); }
+        .header-btns { position: absolute; right: 20px; display: flex; gap: 10px; }
+        .header-btn { background: #495057; color: white; border: 1px solid #adb5bd; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+        .header-btn:hover { background: #6c757d; }
 
-        /* LAYOUT */
-        #app { display: flex; flex: 1; width: 100vw; overflow: hidden; }
-        .pane { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-        
-        #left-pane { border-right: 4px solid #dee2e6; }
-        #container { height: 50%; width: 100%; min-height: 0; background: #f1f3f5; border-bottom: 4px solid #dee2e6; position: relative; }
-        #result-panel { height: 50%; background: white; padding: 0; overflow: hidden; display: flex; flex-direction: column; }
+        /* LAYOUT */
+        #app { display: flex; flex: 1; width: 100vw; overflow: hidden; }
+        .pane { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+        
+        #left-pane { border-right: 4px solid #dee2e6; }
+        #container { height: 50%; width: 100%; min-height: 0; background: #f1f3f5; border-bottom: 4px solid #dee2e6; position: relative; }
+        #result-panel { height: 50%; background: white; padding: 0; overflow: hidden; display: flex; flex-direction: column; }
 
-        #right-pane { background: #fff; }
-        #graph-section { height: 50%; display: flex; flex-direction: column; border-bottom: 4px solid #dee2e6; padding: 10px; background: #fff; position: relative; min-height: 0; }
-        #fft-section { height: 50%; display: flex; flex-direction: column; background: #fff; overflow: hidden; position: relative; padding: 10px; }
+        #right-pane { background: #fff; }
+        #graph-section { height: 50%; display: flex; flex-direction: column; border-bottom: 4px solid #dee2e6; padding: 10px; background: #fff; position: relative; min-height: 0; }
+        #fft-section { height: 50%; display: flex; flex-direction: column; background: #fff; overflow: hidden; position: relative; padding: 10px; }
 
-        /* CONTROLS */
-        #graph-controls { padding: 5px; background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 6px; margin-bottom: 5px; }
-        .ctrl-row { display: flex; gap: 5px; align-items: center; margin-bottom: 2px; flex-wrap: wrap; }
-        .ctrl-label { font-size: 11px; font-weight: 700; color: #555; width: 60px; }
-        .inp { padding: 3px; border: 1px solid #ced4da; border-radius: 3px; font-size: 11px; width: 60px; text-align: center; }
-        .inp-sel { padding: 2px; border: 1px solid #ced4da; border-radius: 3px; font-size: 11px; }
-        #chart-wrapper { flex: 1; position: relative; min-height: 0; }
+        /* CONTROLS */
+        #graph-controls { padding: 5px; background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 6px; margin-bottom: 5px; }
+        .ctrl-row { display: flex; gap: 5px; align-items: center; margin-bottom: 2px; flex-wrap: wrap; }
+        .ctrl-label { font-size: 11px; font-weight: 700; color: #555; width: 60px; }
+        .inp { padding: 3px; border: 1px solid #ced4da; border-radius: 3px; font-size: 11px; width: 60px; text-align: center; }
+        .inp-sel { padding: 2px; border: 1px solid #ced4da; border-radius: 3px; font-size: 11px; }
+        #chart-wrapper { flex: 1; position: relative; min-height: 0; }
 
-        /* Custom Formula Area */
-        #custom-calc-area { padding: 8px; background: #e9ecef; border-bottom: 1px solid #dee2e6; display:flex; gap:5px; align-items:center; }
-        #formula-inp { flex:1; padding:4px; border:1px solid #ced4da; border-radius:3px; font-size:11px; }
+        /* Custom Formula Area */
+        #custom-calc-area { padding: 8px; background: #e9ecef; border-bottom: 1px solid #dee2e6; display:flex; gap:5px; align-items:center; }
+        #formula-inp { flex:1; padding:4px; border:1px solid #ced4da; border-radius:3px; font-size:11px; }
 
-        .panel-header { padding: 8px 15px; background: #e9ecef; border-bottom: 1px solid #dee2e6; font-weight: bold; font-size: 13px; color: #495057; display:flex; align-items:center; justify-content: space-between; }
-        #res-content { flex: 1; padding: 0; overflow-y: auto; }
+        .panel-header { padding: 8px 15px; background: #e9ecef; border-bottom: 1px solid #dee2e6; font-weight: bold; font-size: 13px; color: #495057; display:flex; align-items:center; justify-content: space-between; }
+        #res-content { flex: 1; padding: 0; overflow-y: auto; }
 
-        #toolbar { position: absolute; top: 15px; left: 15px; width: 140px; background: rgba(255,255,255,0.95); padding: 10px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.15); z-index: 10; }
-        .tool-sec { margin-bottom: 8px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
-        .tool-tit { font-size: 10px; color: #888; font-weight: bold; margin-bottom: 4px; }
-        .btn { width: 100%; padding: 5px; margin-bottom: 4px; border: 1px solid #ced4da; background: #fff; border-radius: 4px; cursor: pointer; font-size: 11px; text-align: left; display: flex; align-items: center; transition: 0.1s; }
-        .btn:hover { background: #e7f5ff; border-color: #339af0; }
-        .btn-primary { background: #228be6; color: white; border: none; justify-content: center; font-weight: bold; }
-        .btn-stop { background: #fa5252; color: white; border: none; justify-content: center; font-weight: bold; }
-        .btn-util { background: #868e96; color: white; border: none; justify-content: center; font-weight: bold; }
-        .badge { display: inline-block; width: 18px; text-align: center; margin-right: 5px; font-weight: 800; font-size: 10px; }
+        #toolbar { position: absolute; top: 15px; left: 15px; width: 140px; background: rgba(255,255,255,0.95); padding: 10px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.15); z-index: 10; }
+        .tool-sec { margin-bottom: 8px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+        .tool-tit { font-size: 10px; color: #888; font-weight: bold; margin-bottom: 4px; }
+        .btn { width: 100%; padding: 5px; margin-bottom: 4px; border: 1px solid #ced4da; background: #fff; border-radius: 4px; cursor: pointer; font-size: 11px; text-align: left; display: flex; align-items: center; transition: 0.1s; }
+        .btn:hover { background: #e7f5ff; border-color: #339af0; }
+        .btn-primary { background: #228be6; color: white; border: none; justify-content: center; font-weight: bold; }
+        .btn-stop { background: #fa5252; color: white; border: none; justify-content: center; font-weight: bold; }
+        .btn-util { background: #868e96; color: white; border: none; justify-content: center; font-weight: bold; }
+        .badge { display: inline-block; width: 18px; text-align: center; margin-right: 5px; font-weight: 800; font-size: 10px; }
 
-        #progress-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.8); display:none; justify-content:center; align-items:center; flex-direction:column; z-index:20; }
-        #p-bar { width:200px; height:6px; background:#ddd; border-radius:3px; margin-top:5px; overflow:hidden; }
-        #p-fill { width:0%; height:100%; background:#228be6; transition:width 0.1s; }
-        
-        .res-table { width: 100%; border-collapse: collapse; font-size: 11px; }
-        .res-table th { background: #f1f3f5; padding: 6px; border: 1px solid #dee2e6; text-align: center; position: sticky; top: 0; z-index: 2; }
-        .res-table td { padding: 6px; border: 1px solid #dee2e6; text-align: center; }
-        .custom-row { background-color: #f3f0ff; color: #5f3dc4; font-weight:bold; }
-        .btn-del-row { background:none; border:none; cursor:pointer; color:#fa5252; font-weight:bold; }
+        #progress-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.8); display:none; justify-content:center; align-items:center; flex-direction:column; z-index:20; }
+        #p-bar { width:200px; height:6px; background:#ddd; border-radius:3px; margin-top:5px; overflow:hidden; }
+        #p-fill { width:0%; height:100%; background:#228be6; transition:width 0.1s; }
+        
+        .res-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+        .res-table th { background: #f1f3f5; padding: 6px; border: 1px solid #dee2e6; text-align: center; position: sticky; top: 0; z-index: 2; }
+        .res-table td { padding: 6px; border: 1px solid #dee2e6; text-align: center; }
+        .custom-row { background-color: #f3f0ff; color: #5f3dc4; font-weight:bold; }
+        .btn-del-row { background:none; border:none; cursor:pointer; color:#fa5252; font-weight:bold; }
 
-        /* DRAGGABLE GUIDE MODAL */
-        #guide-modal { display: none; position: fixed; top: 100px; left: 100px; width: 400px; height: 500px; background: #fff; border: 1px solid #adb5bd; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); z-index: 1000; flex-direction: column; resize: both; overflow: hidden; }
-        #guide-header-bar { padding: 10px; background: #343a40; color: white; cursor: move; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
-        #guide-body { flex: 1; padding: 15px; overflow-y: auto; font-size: 12px; line-height: 1.6; color: #333; background: #f8f9fa;}
-        #guide-body ul { padding-left: 20px; margin: 0; }
-        #guide-body li { margin-bottom: 6px; }
+        /* MODALS (Common) */
+        .modal { display: none; position: fixed; background: #fff; border: 1px solid #adb5bd; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); z-index: 1000; flex-direction: column; resize: both; overflow: hidden; }
+        .modal-header { padding: 10px; background: #343a40; color: white; cursor: move; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
+        .modal-body { flex: 1; padding: 15px; overflow-y: auto; font-size: 12px; line-height: 1.6; color: #333; background: #f8f9fa;}
+        
+        /* Guide Modal Specific */
+        #guide-modal { width: 400px; height: 500px; top: 100px; left: 100px; }
+        #guide-body ul { padding-left: 20px; margin: 0; }
+        #guide-body li { margin-bottom: 6px; }
 
-        /* FFT PANEL */
-        #fft-controls { display:flex; gap:5px; align-items:center; font-size:11px; margin-bottom: 5px; flex-wrap: wrap; background: #f1f3f5; padding: 5px; border-radius: 5px;}
-        #fft-chart-area { flex:1; position:relative; min-height:0; border-bottom:1px solid #eee; margin-bottom:5px;}
-        #fft-peaks-area { height: 120px; overflow-y:auto; font-size:11px; border: 1px solid #dee2e6; }
-        .peak-table { width:100%; border-collapse:collapse; text-align:center; }
-        .peak-table th { background:#e9ecef; position:sticky; top:0; padding:4px; font-size: 11px;}
-        .peak-table td { border-bottom:1px solid #eee; padding:3px; }
-        .peak-table tr:hover { background:#f1f3f5; cursor:pointer; }
-        .peak-row-active { background:#ffec99 !important; font-weight:bold; }
+        /* Guestbook Modal Specific */
+        #guest-modal { width: 350px; height: 500px; top: 100px; left: 100px; }
+        #guest-list { flex: 1; overflow-y: auto; margin-bottom: 10px; border: 1px solid #dee2e6; background: white; padding: 10px; border-radius: 4px; }
+        .guest-msg { margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+        .guest-user { font-weight: bold; color: #228be6; font-size: 11px; }
+        .guest-time { font-size: 9px; color: #888; float: right; }
+        .guest-txt { font-size: 12px; margin-top: 2px; }
+        #guest-form { display: flex; gap: 5px; flex-direction: column; }
+        .guest-inp { padding: 6px; border: 1px solid #ced4da; border-radius: 4px; font-size: 12px; }
 
+        /* FFT PANEL */
+        #fft-controls { display:flex; gap:5px; align-items:center; font-size:11px; margin-bottom: 5px; flex-wrap: wrap; background: #f1f3f5; padding: 5px; border-radius: 5px;}
+        #fft-chart-area { flex:1; position:relative; min-height:0; border-bottom:1px solid #eee; margin-bottom:5px;}
+        #fft-peaks-area { height: 120px; overflow-y:auto; font-size:11px; border: 1px solid #dee2e6; }
+        .peak-table { width:100%; border-collapse:collapse; text-align:center; }
+        .peak-table th { background:#e9ecef; position:sticky; top:0; padding:4px; font-size: 11px;}
+        .peak-table td { border-bottom:1px solid #eee; padding:3px; }
+        .peak-table tr:hover { background:#f1f3f5; cursor:pointer; }
+        .peak-row-active { background:#ffec99 !important; font-weight:bold; }
 
-        
-/* --- MOBILE RESPONSIVE STYLES --- */
-    @media screen and (max-width: 768px) {
-        /* 1. 전체 레이아웃을 세로로 변경 */
-        #app { flex-direction: column; height: 100vh; overflow-y: auto; }
-        
-        /* 2. 패널 높이 재분배 (상단 회로: 55%, 하단 그래프: 45%) */
-        .pane { width: 100%; flex: none; }
-        #left-pane { height: 55vh; border-right: none; border-bottom: 4px solid #dee2e6; display: flex; flex-direction: column; }
-        #right-pane { height: 45vh; display: flex; flex-direction: column; }
-
-        /* 3. 내부 섹션 높이 조정 */
-        /* 회로 영역을 더 넓게 확보 */
-        #container { height: 65% !important; } 
-        #result-panel { height: 35% !important; }
-        
-        /* 그래프와 FFT 패널 탭 형식 또는 높이 조정 */
-        #graph-section { height: 60% !important; }
-        #fft-section { height: 40% !important; }
-
-        /* 4. 툴바 위치 및 크기 조정 (모바일에서 너무 크지 않게) */
-        #toolbar { 
-            top: 5px; left: 5px; width: 110px; 
-            padding: 5px; max-height: 60vh; overflow-y: auto;
-        }
-        .tool-tit { font-size: 9px; }
-        .btn { font-size: 10px; padding: 4px; }
-
-        /* 5. 컨트롤 패널 줄바꿈 허용 (입력창 짤림 방지) */
-        .ctrl-row { flex-wrap: wrap; gap: 8px; }
-        .ctrl-label { width: auto; margin-right: 5px; }
-        .inp { width: 50px; font-size: 12px; padding: 5px; }
-        .btn-primary, .btn-stop { padding: 8px; } /* 터치하기 쉽게 버튼 키움 */
-
-        /* 6. 모달 창 (매뉴얼, FFT) 모바일 최적화 */
-        #guide-modal { 
-            width: 90% !important; height: 70% !important; 
-            top: 15% !important; left: 5% !important; 
-            transform: none !important; /* 드래그 위치 초기화 */
-        }
-        #fft-modal #fft-box { width: 95%; height: 80%; padding: 10px; }
-        
-        /* 7. 폰트 사이즈 전반적 확대 */
-        body { font-size: 14px; }
-        .panel-header { padding: 5px 10px; font-size: 12px; }
-    }
-        
-
-    </style>
-
+    /* --- MOBILE RESPONSIVE STYLES --- */
+    @media screen and (max-width: 768px) {
+        #app { flex-direction: column; height: 100vh; overflow-y: auto; }
+        .pane { width: 100%; flex: none; }
+        #left-pane { height: 55vh; border-right: none; border-bottom: 4px solid #dee2e6; display: flex; flex-direction: column; }
+        #right-pane { height: 45vh; display: flex; flex-direction: column; }
+        #container { height: 65% !important; } 
+        #result-panel { height: 35% !important; }
+        #graph-section { height: 60% !important; }
+        #fft-section { height: 40% !important; }
+        #toolbar { top: 5px; left: 5px; width: 110px; padding: 5px; max-height: 60vh; overflow-y: auto; }
+        .tool-tit { font-size: 9px; }
+        .btn { font-size: 10px; padding: 4px; }
+        .ctrl-row { flex-wrap: wrap; gap: 8px; }
+        .ctrl-label { width: auto; margin-right: 5px; }
+        .inp { width: 50px; font-size: 12px; padding: 5px; }
+        .btn-primary, .btn-stop { padding: 8px; }
+        /* Modals on Mobile */
+        .modal { width: 90% !important; height: 70% !important; top: 15% !important; left: 5% !important; transform: none !important; }
+        body { font-size: 14px; }
+        .panel-header { padding: 5px 10px; font-size: 12px; }
+    }
+    </style>
 </head>
 <body>
 
 <div id="main-header">
-    <div id="app-title">Online Circuit Simulator for Beginners</div>
-    <div class="header-btns">
-        <button id="manual-btn" class="header-btn" onclick="toggleGuide()">📖 Manual</button>
-        <button id="lang-btn" class="header-btn" onclick="toggleLanguage()">🌐 English</button>
-    </div>
+    <div id="app-title">Online Circuit Simulator for Beginners</div>
+    <div class="header-btns">
+        //<button id="guest-btn" class="header-btn" onclick="toggleGuestbook()">📝 Guestbook</button>//
+        <button id="manual-btn" class="header-btn" onclick="toggleGuide()">📖 Manual</button>
+        <button id="lang-btn" class="header-btn" onclick="toggleLanguage()">🌐 English</button>
+    </div>
 </div>
 
-<div id="guide-modal" style="display:none;">
-    <div id="guide-header-bar">
-        <span style="font-weight:bold;" data-txt="guideTitle">📘 D. App User Guide</span>
-        <button style="background:none; border:none; color:white; font-weight:bold; cursor:pointer;" onclick="toggleGuide()">✕</button>
-    </div>
-    <div id="guide-body">
-        <ul id="guide-list"></ul>
-    </div>
+<div id="guide-modal" class="modal">
+    <div id="guide-header-bar" class="modal-header">
+        <span style="font-weight:bold;" data-txt="guideTitle">📘 D. App User Guide</span>
+        <button style="background:none; border:none; color:white; font-weight:bold; cursor:pointer;" onclick="toggleGuide()">✕</button>
+    </div>
+    <div id="guide-body" class="modal-body">
+        <ul id="guide-list"></ul>
+    </div>
+</div>
+
+<div id="guest-modal" class="modal">
+    <div id="guest-header-bar" class="modal-header">
+        <span style="font-weight:bold;">📝 Guestbook (Supabase)</span>
+        <button style="background:none; border:none; color:white; font-weight:bold; cursor:pointer;" onclick="toggleGuestbook()">✕</button>
+    </div>
+    <div class="modal-body" style="display:flex; flex-direction:column;">
+        <div id="guest-list">Loading...</div>
+        <div id="guest-form">
+            <input type="text" id="g-name" class="guest-inp" placeholder="Name (Nickname)">
+            <input type="text" id="g-msg" class="guest-inp" placeholder="Leave a message...">
+            <button class="btn btn-primary" style="justify-content:center;" onclick="postMessage()">Submit</button>
+        </div>
+    </div>
 </div>
 
 <div id="app">
-    <div id="left-pane" class="pane">
-        <div id="container"></div>
-        <div id="result-panel">
-            <div class="panel-header"><span data-txt="resTitle">📊 C. Steady State Analysis</span></div>
-            <div id="custom-calc-area">
-                <span style="font-size:11px; font-weight:bold; color:#555;">Formula:</span>
-                <input type="text" id="formula-inp" placeholder="e.g. V(N2)*conj(I(L1))">
-                <button class="btn btn-primary" style="width:auto; margin:0; padding:4px 8px;" onclick="addCustomFormula()">Add</button>
-            </div>
-            <div id="res-content"><div style="color:#888; font-size:11px; text-align:center; padding-top:40px;" data-txt="resPlaceholder">Press [⚡ Steady State] to see results.</div></div>
-        </div>
-        <div id="toolbar">
-            <div class="tool-sec">
-                <div class="tool-tit" data-txt="t_grid">GRID</div>
-                <div style="display:flex; gap:5px;">
-                    <button class="btn" style="justify-content:center;" onclick="updateRailCount(-1)">-</button>
-                    <button class="btn" style="justify-content:center;" onclick="updateRailCount(1)">+</button>
-                </div>
-            </div>
-            <div class="tool-sec">
-                <div class="tool-tit" data-txt="t_file">FILE</div>
-                <button class="btn btn-util" onclick="saveCircuit()"><span data-txt="b_save">💾 Save</span></button>
-                <button class="btn btn-util" onclick="document.getElementById('fileInput').click()"><span data-txt="b_load">📂 Load</span></button>
-                <input type="file" id="fileInput" style="display:none" onchange="loadCircuit(this)">
-            </div>
-            <div class="tool-sec">
-                <div class="tool-tit" data-txt="t_mode">MODE</div>
-                <button class="btn btn-primary" onclick="runSteady()"><span data-txt="b_steady">⚡ Steady State</span></button>
-            </div>
-            <div class="tool-sec">
-                <div class="tool-tit" data-txt="t_parts">PARTS</div>
-                <button class="btn" onclick="spawn('V_DC')"><span class="badge" style="color:#e03131">V</span>DC</button>
-                <button class="btn" onclick="spawn('V_AC')"><span class="badge" style="color:#1971c2">~</span>AC</button>
-                <button class="btn" onclick="spawn('I_AC')"><span class="badge" style="color:#1098ad">I</span>AC</button>
-                <button class="btn" onclick="spawn('R')"><span class="badge">R</span>Res</button>
-                <button class="btn" onclick="spawn('L')"><span class="badge">L</span>Ind</button>
-                <button class="btn" onclick="spawn('C')"><span class="badge">C</span>Cap</button>
-                <button class="btn" onclick="spawn('T')"><span class="badge" style="color:#f08c00">T</span>Trans</button>
-            </div>
-            <button class="btn" style="justify-content:center; background:#f8f9fa;" onclick="resetAll()"><span data-txt="b_reset">Reset All</span></button>
-        </div>
-    </div>
+    <div id="left-pane" class="pane">
+        <div id="container"></div>
+        <div id="result-panel">
+            <div class="panel-header"><span data-txt="resTitle">📊 C. Steady State Analysis</span></div>
+            <div id="custom-calc-area">
+                <span style="font-size:11px; font-weight:bold; color:#555;">Formula:</span>
+                <input type="text" id="formula-inp" placeholder="e.g. V(N2)*conj(I(L1))">
+                <button class="btn btn-primary" style="width:auto; margin:0; padding:4px 8px;" onclick="addCustomFormula()">Add</button>
+            </div>
+            <div id="res-content"><div style="color:#888; font-size:11px; text-align:center; padding-top:40px;" data-txt="resPlaceholder">Press [⚡ Steady State] to see results.</div></div>
+        </div>
+        <div id="toolbar">
+            <div class="tool-sec">
+                <div class="tool-tit" data-txt="t_grid">GRID</div>
+                <div style="display:flex; gap:5px;">
+                    <button class="btn" style="justify-content:center;" onclick="updateRailCount(-1)">-</button>
+                    <button class="btn" style="justify-content:center;" onclick="updateRailCount(1)">+</button>
+                </div>
+            </div>
+            <div class="tool-sec">
+                <div class="tool-tit" data-txt="t_file">FILE</div>
+                <button class="btn btn-util" onclick="saveCircuit()"><span data-txt="b_save">💾 Save</span></button>
+                <button class="btn btn-util" onclick="document.getElementById('fileInput').click()"><span data-txt="b_load">📂 Load</span></button>
+                <input type="file" id="fileInput" style="display:none" onchange="loadCircuit(this)">
+            </div>
+            <div class="tool-sec">
+                <div class="tool-tit" data-txt="t_mode">MODE</div>
+                <button class="btn btn-primary" onclick="runSteady()"><span data-txt="b_steady">⚡ Steady State</span></button>
+            </div>
+            <div class="tool-sec">
+                <div class="tool-tit" data-txt="t_parts">PARTS</div>
+                <button class="btn" onclick="spawn('V_DC')"><span class="badge" style="color:#e03131">V</span>DC</button>
+                <button class="btn" onclick="spawn('V_AC')"><span class="badge" style="color:#1971c2">~</span>AC</button>
+                <button class="btn" onclick="spawn('I_AC')"><span class="badge" style="color:#1098ad">I</span>AC</button>
+                <button class="btn" onclick="spawn('R')"><span class="badge">R</span>Res</button>
+                <button class="btn" onclick="spawn('L')"><span class="badge">L</span>Ind</button>
+                <button class="btn" onclick="spawn('C')"><span class="badge">C</span>Cap</button>
+                <button class="btn" onclick="spawn('T')"><span class="badge" style="color:#f08c00">T</span>Trans</button>
+            </div>
+            <button class="btn" style="justify-content:center; background:#f8f9fa;" onclick="resetAll()"><span data-txt="b_reset">Reset All</span></button>
+        </div>
+    </div>
 
-    <div id="right-pane" class="pane">
-        <div id="graph-section">
-            <div class="panel-header" style="background:#fff; padding-left:0; border:none; margin-bottom:5px;">
-                <span data-txt="transTitle">📈 B. Transient Simulation</span>
-                <button style="font-size:10px; padding:2px 6px; background:#fab005; border:none; border-radius:3px; color:white; font-weight:bold; cursor:pointer;" onclick="autoSetParams()">✨ Auto Scale</button>
-            </div>
-            <div id="graph-controls">
-                <div class="ctrl-row">
-                    <span class="ctrl-label" data-txt="l_time">Time</span>
-                    <input type="number" id="xMin" class="inp" value="0"> ~
-                    <input type="number" id="xMax" class="inp" value="50">
-                    <select id="timeUnit" class="inp-sel"><option value="us">us</option><option value="ms" selected>ms</option><option value="s">s</option></select>
-                </div>
-                <div class="ctrl-row">
-                    <span class="ctrl-label">Step(dt)</span>
-                    <input type="text" id="dtInput" class="inp" value="10u" style="flex:1;">
-                    <span class="ctrl-label" style="width:40px; text-align:right;">Y-Axis</span>
-                    <input type="number" id="yMax" class="inp" placeholder="Auto">
-                </div>
-                <div class="ctrl-row" style="margin-top:5px;">
-                    <button class="btn-primary" style="flex:2; padding:5px; border-radius:4px; border:none; cursor:pointer;" onclick="startSimulation()"><span data-txt="b_run">▶ Run</span></button>
-                    <button class="btn-stop" style="flex:1; padding:5px; border-radius:4px; border:none; cursor:pointer;" onclick="stopSimulation()"><span data-txt="b_stop">⏹ Stop</span></button>
-                    <button style="flex:1; padding:5px; border-radius:4px; border:1px solid #ccc; background:#fff; cursor:pointer;" onclick="exportData()">CSV</button>
-                </div>
-            </div>
-            <div id="chart-wrapper">
-                <canvas id="myChart"></canvas>
-                <div id="progress-overlay">
-                    <div style="font-weight:bold; color:#555;">Simulating...</div>
-                    <div id="p-bar"><div id="p-fill"></div></div>
-                    <div id="status-text">0%</div>
-                </div>
-            </div>
-        </div>
-        
-        <div id="fft-section">
-            <div class="panel-header" style="background:#fff; padding-left:0; border:none; margin-bottom:5px;">
-                <span style="font-weight:bold;">📊 C-2. FFT Spectrum</span>
-                <button class="btn-util" style="font-size:10px; padding:2px 6px; width:auto;" onclick="performFFT()">🔄 Update</button>
-            </div>
-            <div id="fft-controls">
-                <span><b>Src:</b></span>
-                <select id="fft-src" class="inp-sel" onchange="performFFT()" style="width:70px"></select>
-                <span><b>Range:</b></span>
-                <input type="number" id="fft-min" class="inp" value="0" style="width:40px" onchange="performFFT()"> ~ 
-                <input type="number" id="fft-max" class="inp" value="1000" style="width:50px" onchange="performFFT()"> Hz
-            </div>
-            <div id="fft-chart-area">
-                <canvas id="fftChart"></canvas>
-                <div id="fft-placeholder" style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:#aaa; font-size:11px;">Run Transient Sim first.</div>
-            </div>
-            <div id="fft-peaks-area">
-                <table class="peak-table">
-                    <thead><tr><th>Rank</th><th>Freq(Hz)</th><th>Mag</th></tr></thead>
-                    <tbody id="peak-tbody"></tbody>
-                </table>
-            </div>
-        </div>
-    </div>
+    <div id="right-pane" class="pane">
+        <div id="graph-section">
+            <div class="panel-header" style="background:#fff; padding-left:0; border:none; margin-bottom:5px;">
+                <span data-txt="transTitle">📈 B. Transient Simulation</span>
+                <button style="font-size:10px; padding:2px 6px; background:#fab005; border:none; border-radius:3px; color:white; font-weight:bold; cursor:pointer;" onclick="autoSetParams()">✨ Auto Scale</button>
+            </div>
+            <div id="graph-controls">
+                <div class="ctrl-row">
+                    <span class="ctrl-label" data-txt="l_time">Time</span>
+                    <input type="number" id="xMin" class="inp" value="0"> ~
+                    <input type="number" id="xMax" class="inp" value="50">
+                    <select id="timeUnit" class="inp-sel"><option value="us">us</option><option value="ms" selected>ms</option><option value="s">s</option></select>
+                </div>
+                <div class="ctrl-row">
+                    <span class="ctrl-label">Step(dt)</span>
+                    <input type="text" id="dtInput" class="inp" value="10u" style="flex:1;">
+                    <span class="ctrl-label" style="width:40px; text-align:right;">Y-Axis</span>
+                    <input type="number" id="yMax" class="inp" placeholder="Auto">
+                </div>
+                <div class="ctrl-row" style="margin-top:5px;">
+                    <button class="btn-primary" style="flex:2; padding:5px; border-radius:4px; border:none; cursor:pointer;" onclick="startSimulation()"><span data-txt="b_run">▶ Run</span></button>
+                    <button class="btn-stop" style="flex:1; padding:5px; border-radius:4px; border:none; cursor:pointer;" onclick="stopSimulation()"><span data-txt="b_stop">⏹ Stop</span></button>
+                    <button style="flex:1; padding:5px; border-radius:4px; border:1px solid #ccc; background:#fff; cursor:pointer;" onclick="exportData()">CSV</button>
+                </div>
+            </div>
+            <div id="chart-wrapper">
+                <canvas id="myChart"></canvas>
+                <div id="progress-overlay">
+                    <div style="font-weight:bold; color:#555;">Simulating...</div>
+                    <div id="p-bar"><div id="p-fill"></div></div>
+                    <div id="status-text">0%</div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="fft-section">
+            <div class="panel-header" style="background:#fff; padding-left:0; border:none; margin-bottom:5px;">
+                <span style="font-weight:bold;">📊 C-2. FFT Spectrum</span>
+                <button class="btn-util" style="font-size:10px; padding:2px 6px; width:auto;" onclick="performFFT()">🔄 Update</button>
+            </div>
+            <div id="fft-controls">
+                <span><b>Src:</b></span>
+                <select id="fft-src" class="inp-sel" onchange="performFFT()" style="width:70px"></select>
+                <span><b>Range:</b></span>
+                <input type="number" id="fft-min" class="inp" value="0" style="width:40px" onchange="performFFT()"> ~ 
+                <input type="number" id="fft-max" class="inp" value="1000" style="width:50px" onchange="performFFT()"> Hz
+            </div>
+            <div id="fft-chart-area">
+                <canvas id="fftChart"></canvas>
+                <div id="fft-placeholder" style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:#aaa; font-size:11px;">Run Transient Sim first.</div>
+            </div>
+            <div id="fft-peaks-area">
+                <table class="peak-table">
+                    <thead><tr><th>Rank</th><th>Freq(Hz)</th><th>Mag</th></tr></thead>
+                    <tbody id="peak-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>
+    // =========================================================================
+    // 🔴 SUPABASE CONFIGURATION (반드시 자신의 값으로 변경하세요)
+    // =========================================================================
+    const supabaseUrl = 'https://rhiaahzaftsfnbaywcby.supabase.co';
+    const supabaseKey = 'sb_publishable_iDFJ6pJRKCbwaE1SQleLMg_mOHD8Q4z';
+    // =========================================================================
+    
+    let supabaseClient = null;
+    
+    try {
+        if(supabaseUrl !== 'YOUR_SUPABASE_URL' && typeof supabase !== 'undefined') {
+            supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+        }
+    } catch(e) { console.error("Supabase Init Error:", e); }
 
-  
-    // --- DRAGGABLE MODAL (Mouse & Touch Support) ---
-    const guideModal = document.getElementById("guide-modal");
-    const guideHeader = document.getElementById("guide-header-bar");
-    let isDragging = false, currentX, currentY, initialX, initialY, xOffset = 0, yOffset = 0;
+    const guestModal = document.getElementById("guest-modal");
+    
+    function toggleGuestbook() {
+        if(!supabaseClient) {
+            alert("Supabase 설정이 필요합니다. HTML 코드 상단의 supabaseUrl, supabaseKey를 입력해주세요.");
+            return;
+        }
+        if (guestModal.style.display === "none") {
+            guestModal.style.display = "flex";
+            loadMessages();
+            // Center if needed
+            if(parseInt(guestModal.style.top||0) === 0) {
+                const rect = guestModal.getBoundingClientRect();
+                setTranslate((window.innerWidth - rect.width)/2 - 200, (window.innerHeight - rect.height)/2, guestModal);
+            }
+        } else {
+            guestModal.style.display = "none";
+        }
+    }
 
-    function toggleGuide() {
-        if (guideModal.style.display === "none") {
-            guideModal.style.display = "flex";
-            // 중앙 정렬 초기화 (데스크탑/모바일 공통)
-            if(xOffset === 0 && yOffset === 0) {
-                const rect = guideModal.getBoundingClientRect();
-                xOffset = (window.innerWidth - rect.width) / 2;
-                if(window.innerWidth > 768) xOffset -= 100; // 데스크탑 보정
-                yOffset = (window.innerHeight - rect.height) / 2;
-                if(window.innerWidth > 768) yOffset -= 100; // 데스크탑 보정
-                setTranslate(xOffset, yOffset, guideModal);
-            }
-        } else { guideModal.style.display = "none"; }
-    }
+    async function loadMessages() {
+        const listDiv = document.getElementById("guest-list");
+        listDiv.innerHTML = "Loading...";
+        try {
+            const { data, error } = await supabaseClient
+                .from('circuitsim')
+                .select('*')
+                .order('created_at', { ascending: false })
+                .limit(50);
+            
+            if(error) throw error;
+            
+            listDiv.innerHTML = "";
+            data.forEach(msg => {
+                const d = new Date(msg.created_at).toLocaleString();
+                const div = document.createElement('div');
+                div.className = 'guest-msg';
+                div.innerHTML = `<span class="guest-user">${escapeHtml(msg.username)}</span><span class="guest-time">${d}</span><div class="guest-txt">${escapeHtml(msg.content)}</div>`;
+                listDiv.appendChild(div);
+            });
+        } catch(e) {
+            listDiv.innerHTML = "Error loading messages. Check Supabase connection.";
+            console.error(e);
+        }
+    }
 
-    // Mouse Events
-    guideHeader.addEventListener("mousedown", dragStart);
-    document.addEventListener("mousemove", drag);
-    document.addEventListener("mouseup", dragEnd);
-
-    // Touch Events (For Mobile)
-    guideHeader.addEventListener("touchstart", dragStart, {passive: false});
-    document.addEventListener("touchmove", drag, {passive: false});
-    document.addEventListener("touchend", dragEnd);
-
-    function dragStart(e) {
-        // 터치 또는 마우스 좌표 통일
-        const clientX = e.type === 'touchstart' ? e.touches[0].clientX : e.clientX;
-        const clientY = e.type === 'touchstart' ? e.touches[0].clientY : e.clientY;
-
-        initialX = clientX - xOffset;
-        initialY = clientY - yOffset;
-
-        if (e.target === guideHeader || guideHeader.contains(e.target)) {
-            isDragging = true;
-        }
-    }
-
-    function drag(e) {
-        if (isDragging) {
-            e.preventDefault(); // 스크롤 방지
-            
-            const clientX = e.type === 'touchmove' ? e.touches[0].clientX : e.clientX;
-            const clientY = e.type === 'touchmove' ? e.touches[0].clientY : e.clientY;
-
-            currentX = clientX - initialX;
-            currentY = clientY - initialY;
-
-            xOffset = currentX;
-            yOffset = currentY;
-
-            setTranslate(currentX, currentY, guideModal);
-        }
-    }
-
-    function dragEnd(e) {
-        initialX = currentX;
-        initialY = currentY;
-        isDragging = false;
-    }
-
-    function setTranslate(x, y, el) {
-        el.style.transform = `translate3d(${x}px, ${y}px, 0)`;
-    }
-
-    // --- FFT (Improved) ---
-    const SimpleFFT = {
-        fft: function(data) {
-            const N = data.length;
-            if (N <= 1) return data;
-            const hN = N / 2;
-            const even = new Array(hN), odd = new Array(hN);
-            for (let i = 0; i < hN; i++) { even[i] = data[2 * i]; odd[i] = data[2 * i + 1]; }
-            const evenFFT = this.fft(even), oddFFT = this.fft(odd);
-            const res = new Array(N);
-            for (let k = 0; k < hN; k++) {
-                const angle = -2 * Math.PI * k / N;
-                const tr = oddFFT[k].re * Math.cos(angle) - oddFFT[k].im * Math.sin(angle);
-                const ti = oddFFT[k].re * Math.sin(angle) + oddFFT[k].im * Math.cos(angle);
-                res[k] = { re: evenFFT[k].re + tr, im: evenFFT[k].im + ti };
-                res[k + hN] = { re: evenFFT[k].re - tr, im: evenFFT[k].im - ti };
-            }
-            return res;
-        },
-        calculateSpectrum: function(signalData, dt) {
-            const rawN = signalData.length;
-            let n = 1; while (n < rawN) n *= 2; 
-            const input = new Array(n);
-            const startIndex = Math.floor(rawN * 0.1); 
-            const activeLen = rawN - startIndex;
-            
-            for (let i = 0; i < n; i++) {
-                if (i < activeLen) {
-                    const originalVal = signalData[i + startIndex];
-                    const windowVal = 0.5 * (1 - Math.cos((2 * Math.PI * i) / (activeLen - 1)));
-                    input[i] = { re: originalVal * windowVal, im: 0 };
-                } else { input[i] = { re: 0, im: 0 }; }
-            }
-            const output = this.fft(input);
-            const sampleRate = 1.0 / dt;
-            const spectrum = [];
-            const scaleFactor = 2.0 * (2.0 / activeLen); 
-            for (let i = 0; i < n / 2; i++) {
-                let mag = Math.sqrt(output[i].re ** 2 + output[i].im ** 2) * scaleFactor;
-                if (i === 0) mag /= 2;
-                spectrum.push({ x: i * sampleRate / n, y: mag });
-            }
-            return spectrum;
-        }
-    };
-
-    // --- MATH & UTILS ---
-    function parseUnit(s){if(!s)return NaN;s=s.toString();const m=s.match(/^([\d\.]+)\s*([a-zA-Z]*)$/);if(!m)return parseFloat(s);const v=parseFloat(m[1]),u=m[2],k={'p':1e-12,'n':1e-9,'u':1e-6,'m':1e-3,'k':1e3,'M':1e6,'G':1e9};return v*(k[u]||1);}
-    function formatUnit(v,u){if(Math.abs(v)<1e-15)return "0"+u;const a=Math.abs(v),r=[{v:1e9,s:'G'},{v:1e6,s:'M'},{v:1e3,s:'k'},{v:1,s:''},{v:1e-3,s:'m'},{v:1e-6,s:'u'},{v:1e-9,s:'n'},{v:1e-12,s:'p'}];for(let x of r)if(a>=x.v*0.9)return parseFloat((v/x.v).toFixed(3))+x.s+u;return v.toExponential(1)+u;}
-    function formatEng(v){if(v===0)return "0";const k={'p':1e-12,'n':1e-9,'u':1e-6,'m':1e-3,'':1};let bK='',bV=v;for(let key in k){if(Math.abs(v)>=k[key]&&k[key]<1){if(Math.abs(v)/k[key]<1000){bK=key;bV=v/k[key];break;}}}return parseFloat(bV.toFixed(2))+bK;}
+    async function postMessage() {
+        const nameInp = document.getElementById('g-name');
+        const msgInp = document.getElementById('g-msg');
+        const username = nameInp.value.trim();
+        const content = msgInp.value.trim();
+        
+        if(!username || !content) return alert("Please enter name and message.");
+        
+        try {
+            const { error } = await supabaseClient
+                .from('circuitsim')
+                .insert([{ username, content }]);
+            if(error) throw error;
+            msgInp.value = '';
+            loadMessages();
+        } catch(e) {
+            alert("Failed to send.");
+            console.error(e);
+        }
+    }
+    
+    function escapeHtml(text) {
+        if(!text) return "";
+        return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+    }
 
 
-    // --- TEXTS ---
-    let curLang = 'ko'; 
-    const texts = {
-        ko: {
-            appTitle: "초보자를 위한 온라인 회로 시뮬레이터", langBtn: "🌐 English",
-            t_grid: "그리드", t_file: "파일", t_mode: "모드", t_parts: "부품",
-            b_save: "💾 저장", b_load: "📂 불러오기", b_steady: "⚡ 정상상태", b_reset: "초기화",
-            b_run: "▶ 실행", b_stop: "⏹ 정지",
-            resTitle: "📊 정상상태 해석 결과", resPlaceholder: "[⚡ 정상상태] 버튼을 눌러 결과를 확인하세요.",
-            transTitle: "📈 과도응답 시뮬레이션", l_time: "시간",
-            guideTitle: "📘 앱 사용 가이드",
-            guideItems: ["<b>소자 추가/연결/삭제:</b> 툴바 클릭, 드래그, 우클릭.", "<b>속성 변경:</b> 더블 클릭 (값, 주파수, 위상).", "<b>정상상태 해석:</b> 회로의 최종 안정 상태(크기, 위상) 계산.", "<b>수식 계산:</b> 정상상태 패널에서 <b>V(N1)*conj(I(R1))</b> 등을 입력하여 전력 등을 계산.", "<b>과도응답:</b> 시간에 따른 변화를 그래프로 확인.", "<b>FFT:</b> 우측 하단에서 주파수 분석.", "<b>RMS:</b> 정상상태 결과에 실효값(RMS) 표시됨."],
-            th_var: "변수/수식", th_mag: "Peak (Mag)", th_rms: "RMS", th_ph: "위상 (deg)"
-        },
-        en: {
-            appTitle: "Online Circuit Simulator for Beginners", langBtn: "🌐 한국어",
-            t_grid: "GRID", t_file: "FILE", t_mode: "MODE", t_parts: "PARTS",
-            b_save: "💾 Save", b_load: "📂 Load", b_steady: "⚡ Steady State", b_reset: "Reset All",
-            b_run: "▶ Run", b_stop: "⏹ Stop",
-            resTitle: "📊 Steady State Result", resPlaceholder: "Press [⚡ Steady State] to see results.",
-            transTitle: "📈 Transient Simulation", l_time: "Time",
-            guideTitle: "📘 App User Guide",
-            guideItems: ["<b>Add/Connect/Delete:</b> Toolbar click, drag, right-click.", "<b>Properties:</b> Double-click to edit.", "<b>Steady State:</b> Calculates final Mag/Phase.", "<b>Custom Formula:</b> Type <b>V(N1)*conj(I(R1))</b> to calc power.", "<b>Transient:</b> Time-domain graph.", "<b>FFT:</b> Frequency analysis panel.", "<b>RMS:</b> RMS values are shown in the table."],
-            th_var: "Variable/Formula", th_mag: "Peak (Mag)", th_rms: "RMS", th_ph: "Phase (deg)"
-        }
-    };
-    function toggleLanguage(){ curLang = (curLang==='ko') ? 'en' : 'ko'; updateText(); }
-    function updateText(){
-        const t = texts[curLang]; document.getElementById('app-title').innerText = t.appTitle; document.getElementById('lang-btn').innerText = t.langBtn;
-        document.querySelectorAll('[data-txt]').forEach(el => { const key = el.getAttribute('data-txt'); if(t[key]) el.innerHTML = t[key]; });
-        document.getElementById('guide-list').innerHTML = t.guideItems.map(item => `<li>${item}</li>`).join('');
-        if(steadyResults) renderSteadyResults(); // Refresh table headers
-    }
+    // --- DRAGGABLE MODAL (Unified) ---
+    const guideModal = document.getElementById("guide-modal");
+    let activeModal = null;
+    let isDragging = false, currentX, currentY, initialX, initialY, xOffset = 0, yOffset = 0;
 
-    // --- SETUP & DRAWING ---
-    const stage=new Konva.Stage({container:'container',width:100,height:100});
-    const layer=new Konva.Layer(); stage.add(layer);
-    let railCount=6; const MAX_RAILS=30; const START_X=230, BASE_W=120;
-    let groundRails = new Set([1]); 
-    new ResizeObserver(()=>{const c=document.getElementById('container');if(c.offsetWidth>0){stage.width(c.offsetWidth);stage.height(c.offsetHeight);drawGrid();}}).observe(document.getElementById('container'));
-    function getGridMetrics() { const w=stage.width(), h=stage.height(); let rw=BASE_W; if(START_X+railCount*rw > w-20) rw=(w-START_X-20)/railCount; if(rw<30) rw=30; let compScale = Math.min(1, (rw * 0.9) / 100); return {rw, gndY:h*0.9, compScale}; }
-    function drawGrid(){
-        layer.find('.g').forEach(n=>n.destroy()); const {rw, gndY} = getGridMetrics();
-        layer.add(new Konva.Line({points:[START_X-20, gndY, START_X+railCount*rw, gndY], stroke:'#212529', strokeWidth:3, name:'g'}));
-        layer.add(new Konva.Text({x:START_X-50, y:gndY+10, text:'0 (GND)', fontStyle:'bold', fill:'#212529', name:'g'}));
-        for(let i=1; i<=railCount; i++){
-            const x=START_X+(i-1)*rw; const isG = groundRails.has(i); 
-            const l=new Konva.Line({points:[x,40,x,gndY], stroke: isG ? '#212529' : '#adb5bd', strokeWidth: isG ? 3 : 1, dash: isG ? [] : [4,4], name:'g'});
-            const grp=new Konva.Group({x:x,y:20,name:'g'});
-            grp.add(new Konva.Rect({x:-14,y:-10,width:28,height:20,fill:isG?'#343a40':'#fff',stroke:'#ced4da',cornerRadius:10}));
-            grp.add(new Konva.Text({x:-14,y:-5,width:28,align:'center',text: isG ? `G${i}` : `${i}`, fill: isG ? '#fff' : '#495057', fontSize:10,fontStyle:'bold'}));
-            grp.on('mouseenter',()=>document.body.style.cursor='pointer'); grp.on('mouseleave',()=>document.body.style.cursor='default');
-            grp.on('click', () => { if(groundRails.has(i)) groundRails.delete(i); else groundRails.add(i); drawGrid(); });
-            layer.add(l); layer.add(grp);
-        }
-        components.forEach(c=>updateComp(c)); layer.draw();
-    }
-    function updateRailCount(d){let n=railCount+d;if(n<2||n>MAX_RAILS)return;railCount=n;drawGrid();}
+    // Add events for Guide
+    const guideHeader = document.getElementById("guide-header-bar");
+    guideHeader.addEventListener("mousedown", (e) => dragStart(e, guideModal));
+    guideHeader.addEventListener("touchstart", (e) => dragStart(e, guideModal), {passive: false});
 
-    let components=[], idCnt={R:0,L:0,C:0,V:0,T:0,I:0};
-    function spawn(type, params=null){ 
-        let c;
-        if(params) { c = { ...params }; c.group = null; c.lineL = null; c.lineR = null; c.labelObj = null; } 
-        else {
-            let cat=type.includes('V')?'V':(type.includes('I')?'I':type.charAt(0)); idCnt[cat]++; const name=cat+idCnt[cat];
-            c={name,type,val:0,freq:60,phase:0,unit:'',nL:1,nR:2,ratio:1, group:null, lineL:null, lineR:null};
-            if(type==='R'){c.val=1000;c.unit='Ω';} else if(type==='L'){c.val=10e-3;c.unit='H';} else if(type==='C'){c.val=100e-6;c.unit='F';}
-            else if(type==='V_DC'){c.val=10;c.unit='V';} else if(type==='V_AC'){c.val=220;c.unit='V';}
-            else if(type==='I_AC'){c.val=1;c.unit='A';}
-            else if(type==='T'){c.ratio=1;c.unit='';}
-        }
-        const {rw} = getGridMetrics();
-        let sx = START_X + rw/2; let sy = 100;
-        if(!params && components.length > 0) { sy += 60; }
-        const initX = (c.uiX !== undefined) ? c.uiX : sx; const initY = (c.uiY !== undefined) ? c.uiY : sy;
-        const g=new Konva.Group({x:initX,y:initY,draggable:true});
-        const wL=new Konva.Line({points:[],stroke:'#000',strokeWidth:2,dash:[2,2],name:'w'});
-        const wR=new Konva.Line({points:[],stroke:'#000',strokeWidth:2,dash:[2,2],name:'w'}); 
-        layer.add(wL); layer.add(wR); c.lineL=wL; c.lineR=wR;
-        const shape=drawShape(c.type); g.add(shape);
-        const lbl=new Konva.Text({x:-50,y:-50,width:100,align:'center',fontSize:12,fontStyle:'bold',fill:'#333',text:getLabel(c)});
-        g.add(lbl); c.labelObj=lbl; c.group=g;
-        g.on('dragmove',()=>updateComp(c, true));
-        g.on('dragend',()=>{
-            c.uiX = g.x(); c.uiY = g.y(); const {rw} = getGridMetrics(); const gx = g.x(); const isVertical = (c.nL === 0 || c.nR === 0);
-            if(isVertical) {
-                let idx = Math.round((gx - START_X) / rw) + 1; 
-                if(idx < 1) idx = 1; if(idx > railCount) idx = railCount;
-                if(c.nL === 0) c.nR = idx; else c.nL = idx;
-            } else {
-                let leftIdx = Math.round((gx - START_X - rw/2) / rw); 
-                let nLeft = leftIdx + 1; if(nLeft < 1) nLeft = 1; if(nLeft >= railCount) nLeft = railCount - 1;
-                c.nL = nLeft; c.nR = nLeft + 1;
-            }
-            updateComp(c);
-        });
-        g.on('dblclick',()=>{
-            let def=`${c.nL},${c.nR}`, promptMsg=`[${c.name}] N1, N2`;
-            if(c.type==='T'){promptMsg+=`, Ratio`;def+=`,${c.ratio}`;} else {promptMsg+=`, Val`;def+=`,${formatUnit(c.val,'').replace(/[a-zA-Z]*$/,'')}`;}
-            if(c.type.includes('AC')){promptMsg+=`, Freq, Phase(deg)`;def+=`,${c.freq},${c.phase||0}`;}
-            const ret=prompt(promptMsg, def);
-            if(ret){
-                const p=ret.split(','); const newNL=parseInt(p[0]), newNR=parseInt(p[1]);
-                const nodes = [newNL, newNR].sort((a,b)=>a-b);
-                if(nodes[0]===0 && nodes[1]===1) return alert("Error: 0-1 connect forbidden");
-                if(nodes[0]===0 && nodes[1]===railCount) return alert("Error: 0-End connect forbidden");
-                if(nodes[0]===1 && nodes[1]===railCount) return alert("Error: 1-End connect forbidden");
-                c.nL=newNL; c.nR=newNR;
-                if(c.type==='T'){if(p[2])c.ratio=parseFloat(p[2]);} else {if(p[2])c.val=parseUnit(p[2]); 
-                if(c.type.includes('AC')){
-                    if(p[3])c.freq=parseUnit(p[3]); 
-                    if(p[4])c.phase=parseFloat(p[4]); else c.phase=0;
-                }}
-                lbl.text(getLabel(c)); updateComp(c); layer.draw();
-            }
-        });
-        g.on('contextmenu',(e)=>{e.evt.preventDefault();if(confirm('Delete?')){g.destroy();c.lineL.destroy();c.lineR.destroy();components=components.filter(x=>x!==c);layer.draw();}});
-        components.push(c); layer.add(g); updateComp(c); layer.draw();
-    }
+    // Add events for Guestbook
+    const guestHeader = document.getElementById("guest-header-bar");
+    guestHeader.addEventListener("mousedown", (e) => dragStart(e, guestModal));
+    guestHeader.addEventListener("touchstart", (e) => dragStart(e, guestModal), {passive: false});
 
-    function updateComp(c, dragging=false){
-        const {rw, gndY, compScale} = getGridMetrics(); const isVertical = (c.nL === 0 || c.nR === 0);
-        c.group.scale({x: compScale, y: compScale});
-        if (dragging) { return; } 
-        if (isVertical) {
-            const targetNode = (c.nL === 0) ? c.nR : c.nL; const tx = START_X + (targetNode-1)*rw; 
-            let ty = c.group.y(); if(ty < 60) ty = 60; if(ty > gndY - 60) ty = gndY - 60;
-            c.group.rotation(90); c.group.position({x:tx, y:ty});
-            c.lineL.points([tx, 40, tx, ty - 50*compScale]); c.lineR.points([tx, ty + 50*compScale, tx, gndY]); 
-            c.labelObj.rotation(-90); c.labelObj.absolutePosition({x: tx + 10, y: ty - 6}); 
-        } else {
-            const xL = START_X + (c.nL-1)*rw; const xR = START_X + (c.nR-1)*rw; const cx = (xL + xR) / 2;
-            c.group.rotation(0); c.group.x(cx);
-            let cy = c.group.y(); if(cy < 60) cy = 60; if(cy > gndY - 20) cy = gndY - 20; 
-            c.group.y(cy);
-            c.lineL.points([xL, cy, cx - 50*compScale, cy]); c.lineR.points([cx + 50*compScale, cy, xR, cy]);
-            c.labelObj.rotation(0); c.labelObj.x(-50); c.labelObj.y(-50);
-        }
-        const col=c.type==='T'?'#f08c00':'#333'; c.lineL.stroke(col); c.lineL.dash([4,4]); c.lineR.stroke(col); c.lineR.dash([4,4]);
-    }
+    document.addEventListener("mousemove", drag);
+    document.addEventListener("mouseup", dragEnd);
+    document.addEventListener("touchmove", drag, {passive: false});
+    document.addEventListener("touchend", dragEnd);
 
-    function getLabel(c){
-        if(c.type==='T') return `${c.name}\n1:${c.ratio}`;
-        let t=`${c.name}\n${formatUnit(c.val,c.unit)}`;
-        if(c.type.includes('AC')) t+=`\n${formatUnit(c.freq,'Hz')} ∠${c.phase||0}°`;
-        return t;
-    }
+    function toggleGuide() {
+        if (guideModal.style.display === "none") {
+            guideModal.style.display = "flex";
+            // Initial Centering Logic (Simplified)
+            const rect = guideModal.getBoundingClientRect();
+            if(rect.top === 100 && rect.left === 100) { // Default css pos
+                 // Leave as is or center logic
+            }
+        } else { guideModal.style.display = "none"; }
+    }
 
-    function drawShape(type) {
-        const g=new Konva.Group({offsetX:50,offsetY:20});
-        g.add(new Konva.Rect({width:100,height:40,fill:'transparent'}));
-        const l=(p,w=2,col='#333')=>new Konva.Line({points:p,stroke:col,strokeWidth:w,lineCap:'round',lineJoin:'round'});
-        const mid=20;
-        if(type==='R') g.add(l([0,mid, 20,mid, 25,mid-10, 35,mid+10, 45,mid-10, 55,mid+10, 65,mid-10, 75,mid+10, 80,mid, 100,mid]));
-        else if(type==='L'){ g.add(new Konva.Path({x:20, y:mid, data:`M0,0 Q7,-15 14,0 Q21,-15 28,0 Q35,-15 42,0 Q49,-15 56,0`, stroke:'#333', strokeWidth:2})); g.add(l([0,mid, 20,mid])); g.add(l([76,mid, 100,mid])); }
-        else if(type==='C'){ g.add(l([0,mid, 45,mid])); g.add(l([55,mid, 100,mid])); g.add(l([45,mid-12, 45,mid+12])); g.add(l([55,mid-12, 55,mid+12])); }
-        else if(type.includes('V')){
-            g.add(l([0,mid, 40,mid])); g.add(l([60,mid, 100,mid]));
-            if(type==='V_DC'){ g.add(l([40,mid-8, 40,mid+8], 3)); g.add(l([60,mid-16, 60,mid+16], 3)); g.add(new Konva.Text({x:65, y:mid-15, text:'+', fontSize:14, fill:'red', fontStyle:'bold'})); } 
-            else { g.add(new Konva.Circle({x:50, y:mid, radius:15, stroke:'#333', strokeWidth:2, fill:'white'})); g.add(new Konva.Path({x:43, y:mid, data:`M0,0 Q3.5,-6 7,0 T14,0`, stroke:'#333', strokeWidth:2})); }
-        }
-        else if(type==='I_AC') {
-            g.add(l([0,mid, 40,mid])); g.add(l([60,mid, 100,mid]));
-            g.add(new Konva.Circle({x:50, y:mid, radius:15, stroke:'#333', strokeWidth:2, fill:'white'}));
-            g.add(new Konva.Arrow({points:[60, mid, 40, mid], pointerLength:6, pointerWidth:6, fill:'#333', stroke:'#333', strokeWidth:2}));
-        }
-        else if(type==='T') {
-            g.add(l([48, 5, 48, 35], 2)); g.add(l([52, 5, 52, 35], 2));
-            g.add(l([0,20, 25,20, 25,10, 35,10], 2)); 
-            g.add(new Konva.Path({ data: "M35,10 c-6,0 -6,6 0,6 c-6,0 -6,6 0,6 c-6,0 -6,6 0,6", stroke: '#333', strokeWidth: 2, lineCap: 'round', lineJoin: 'round' }));
-            g.add(l([35,28, 35,32], 2)); g.add(l([28,32, 42,32], 2)); g.add(l([31,35, 39,35], 2)); g.add(l([34,38, 36,38], 2));
-            g.add(l([100,20, 75,20, 75,10, 65,10], 2)); 
-            g.add(new Konva.Path({ data: "M65,10 c6,0 6,6 0,6 c6,0 6,6 0,6 c6,0 6,6 0,6", stroke: '#333', strokeWidth: 2, lineCap: 'round', lineJoin: 'round' }));
-            g.add(l([65,28, 65,32], 2)); g.add(l([58,32, 72,32], 2)); g.add(l([61,35, 69,35], 2)); g.add(l([64,38, 66,38], 2));
-        }
-        return g;
-    }
+    function dragStart(e, modalEl) {
+        activeModal = modalEl;
+        const style = window.getComputedStyle(modalEl);
+        const matrix = new WebKitCSSMatrix(style.transform);
+        xOffset = matrix.m41;
+        yOffset = matrix.m42;
+        
+        const clientX = e.type === 'touchstart' ? e.touches[0].clientX : e.clientX;
+        const clientY = e.type === 'touchstart' ? e.touches[0].clientY : e.clientY;
+        initialX = clientX - xOffset;
+        initialY = clientY - yOffset;
+        isDragging = true;
+    }
+    function drag(e) {
+        if (isDragging && activeModal) {
+            e.preventDefault();
+            const clientX = e.type === 'touchmove' ? e.touches[0].clientX : e.clientX;
+            const clientY = e.type === 'touchmove' ? e.touches[0].clientY : e.clientY;
+            currentX = clientX - initialX;
+            currentY = clientY - initialY;
+            setTranslate(currentX, currentY, activeModal);
+        }
+    }
+    function dragEnd(e) { isDragging = false; activeModal = null; }
+    function setTranslate(x, y, el) { el.style.transform = `translate3d(${x}px, ${y}px, 0)`; }
 
-    // --- SIMULATION ---
-    let lastSimResult = null; 
-    let steadyResults = null; // Stores complex results { nodes: [], currents: [] }
-    let customFormulas = [];
 
-    function getSetup(){
-        if(components.length===0)return alert('No parts');
-        const map={}; map[0] = -1; 
-        let matrixIdx = 0; const compactMap = {}; compactMap[0] = -1;
-        for(let i=1; i<=railCount; i++){ if(groundRails.has(i)) compactMap[i] = -1; else compactMap[i] = matrixIdx++; }
-        return {map: compactMap, N: matrixIdx};
-    }
+    // --- FFT ---
+    const SimpleFFT = {
+        fft: function(data) {
+            const N = data.length;
+            if (N <= 1) return data;
+            const hN = N / 2;
+            const even = new Array(hN), odd = new Array(hN);
+            for (let i = 0; i < hN; i++) { even[i] = data[2 * i]; odd[i] = data[2 * i + 1]; }
+            const evenFFT = this.fft(even), oddFFT = this.fft(odd);
+            const res = new Array(N);
+            for (let k = 0; k < hN; k++) {
+                const angle = -2 * Math.PI * k / N;
+                const tr = oddFFT[k].re * Math.cos(angle) - oddFFT[k].im * Math.sin(angle);
+                const ti = oddFFT[k].re * Math.sin(angle) + oddFFT[k].im * Math.cos(angle);
+                res[k] = { re: evenFFT[k].re + tr, im: evenFFT[k].im + ti };
+                res[k + hN] = { re: evenFFT[k].re - tr, im: evenFFT[k].im - ti };
+            }
+            return res;
+        },
+        calculateSpectrum: function(signalData, dt) {
+            const rawN = signalData.length;
+            let n = 1; while (n < rawN) n *= 2; 
+            const input = new Array(n);
+            const startIndex = Math.floor(rawN * 0.1); 
+            const activeLen = rawN - startIndex;
+            for (let i = 0; i < n; i++) {
+                if (i < activeLen) {
+                    const originalVal = signalData[i + startIndex];
+                    const windowVal = 0.5 * (1 - Math.cos((2 * Math.PI * i) / (activeLen - 1)));
+                    input[i] = { re: originalVal * windowVal, im: 0 };
+                } else { input[i] = { re: 0, im: 0 }; }
+            }
+            const output = this.fft(input);
+            const sampleRate = 1.0 / dt;
+            const spectrum = [];
+            const scaleFactor = 2.0 * (2.0 / activeLen); 
+            for (let i = 0; i < n / 2; i++) {
+                let mag = Math.sqrt(output[i].re ** 2 + output[i].im ** 2) * scaleFactor;
+                if (i === 0) mag /= 2;
+                spectrum.push({ x: i * sampleRate / n, y: mag });
+            }
+            return spectrum;
+        }
+    };
 
-    function runSteady() {
-        const s=getSetup(); if(!s)return; const {map,N}=s;
-        const ac=components.find(c=>c.type.includes('AC')), freq=ac?ac.freq:0, w=2*Math.PI*freq;
-        const Vs=components.filter(c=>c.type.includes('V')), Ts=components.filter(c=>c.type==='T');
-        const size=N+Vs.length+Ts.length;
-        let A=math.zeros(size,size,'dense'), B=math.zeros(size,1,'dense');
-        
-        const vOff=N, tOff=vOff+Vs.length;
-        components.forEach(c=>{
-            const n1=map[c.nL], n2=map[c.nR];
-            if(['R','L','C'].includes(c.type)) {
-                let Y = math.complex(0,0);
-                if(c.type==='R') Y=math.complex(1/c.val,0);
-                else if(c.type==='L') Y=(w===0)?math.complex(1e9,0):math.complex(0, -1/(w*c.val));
-                else if(c.type==='C') Y=(w===0)?math.complex(0,0):math.complex(0, w*c.val);
-                if(n1>=0) A.set([n1,n1],math.add(A.get([n1,n1]),Y));
-                if(n2>=0) A.set([n2,n2],math.add(A.get([n2,n2]),Y));
-                if(n1>=0&&n2>=0){
-                    const nY=math.multiply(Y,-1);
-                    A.set([n1,n2],math.add(A.get([n1,n2]),nY));
-                    A.set([n2,n1],math.add(A.get([n2,n1]),nY)); 
-                }
-            }
-            else if(c.type.includes('V')) {
-                const idx=vOff+Vs.indexOf(c);
-                if(n2>=0){A.set([n2,idx],1);A.set([idx,n2],1);} if(n1>=0){A.set([n1,idx],-1);A.set([idx,n1],-1);}
-                const phi = (c.phase || 0) * Math.PI / 180;
-                B.set([idx,0], math.complex(c.val * Math.cos(phi), c.val * Math.sin(phi)));
-            }
-            else if(c.type === 'I_AC') {
-                const phi = (c.phase || 0) * Math.PI / 180;
-                const I = math.complex(c.val * Math.cos(phi), c.val * Math.sin(phi));
-                if(n1>=0) B.set([n1,0], math.add(B.get([n1,0]), I));
-                if(n2>=0) B.set([n2,0], math.subtract(B.get([n2,0]), I));
-            }
-            else if(c.type==='T') {
-                const idx=tOff+Ts.indexOf(c);
-                if(n2>=0){A.set([n2,idx],1);A.set([idx,n2],1);} if(n1>=0){A.set([n1,idx],-c.ratio);A.set([idx,n1],-c.ratio);}
-            }
-        });
+    // --- MATH & UTILS ---
+    function parseUnit(s){if(!s)return NaN;s=s.toString();const m=s.match(/^([\d\.]+)\s*([a-zA-Z]*)$/);if(!m)return parseFloat(s);const v=parseFloat(m[1]),u=m[2],k={'p':1e-12,'n':1e-9,'u':1e-6,'m':1e-3,'k':1e3,'M':1e6,'G':1e9};return v*(k[u]||1);}
+    function formatUnit(v,u){if(Math.abs(v)<1e-15)return "0"+u;const a=Math.abs(v),r=[{v:1e9,s:'G'},{v:1e6,s:'M'},{v:1e3,s:'k'},{v:1,s:''},{v:1e-3,s:'m'},{v:1e-6,s:'u'},{v:1e-9,s:'n'},{v:1e-12,s:'p'}];for(let x of r)if(a>=x.v*0.9)return parseFloat((v/x.v).toFixed(3))+x.s+u;return v.toExponential(1)+u;}
+    function formatEng(v){if(v===0)return "0";const k={'p':1e-12,'n':1e-9,'u':1e-6,'m':1e-3,'':1};let bK='',bV=v;for(let key in k){if(Math.abs(v)>=k[key]&&k[key]<1){if(Math.abs(v)/k[key]<1000){bK=key;bV=v/k[key];break;}}}return parseFloat(bV.toFixed(2))+bK;}
 
-        try {
-            const X=math.lusolve(A,B);
-            
-            // Store Results properly for custom calc
-            steadyResults = { nodes: {}, currents: {} };
-            const invMap = {}; Object.keys(map).forEach(k=>{if(map[k]>=0)invMap[map[k]]=k;});
+    // --- TEXTS ---
+    let curLang = 'ko'; 
+    const texts = {
+        ko: {
+            appTitle: "초보자를 위한 온라인 회로 시뮬레이터", langBtn: "🌐 English",
+            t_grid: "그리드", t_file: "파일", t_mode: "모드", t_parts: "부품",
+            b_save: "💾 저장", b_load: "📂 불러오기", b_steady: "⚡ 정상상태", b_reset: "초기화",
+            b_run: "▶ 실행", b_stop: "⏹ 정지",
+            resTitle: "📊 정상상태 해석 결과", resPlaceholder: "[⚡ 정상상태] 버튼을 눌러 결과를 확인하세요.",
+            transTitle: "📈 과도응답 시뮬레이션", l_time: "시간",
+            guideTitle: "📘 앱 사용 가이드",
+            guideItems: ["<b>소자 추가/연결/삭제:</b> 툴바 클릭, 드래그, 우클릭.", "<b>속성 변경:</b> 더블 클릭 (값, 주파수, 위상).", "<b>정상상태 해석:</b> 회로의 최종 안정 상태(크기, 위상) 계산.", "<b>수식 계산:</b> 정상상태 패널에서 <b>V(N1)*conj(I(R1))</b> 등을 입력하여 전력 등을 계산.", "<b>과도응답:</b> 시간에 따른 변화를 그래프로 확인.", "<b>FFT:</b> 우측 하단에서 주파수 분석.", "<b>RMS:</b> 정상상태 결과에 실효값(RMS) 표시됨.", "<b>방명록:</b> 상단 메뉴에서 방명록을 열어 의견을 남겨주세요!"],
+            th_var: "변수/수식", th_mag: "Peak (Mag)", th_rms: "RMS", th_ph: "위상 (deg)"
+        },
+        en: {
+            appTitle: "Online Circuit Simulator for Beginners", langBtn: "🌐 한국어",
+            t_grid: "GRID", t_file: "FILE", t_mode: "MODE", t_parts: "PARTS",
+            b_save: "💾 Save", b_load: "📂 Load", b_steady: "⚡ Steady State", b_reset: "Reset All",
+            b_run: "▶ Run", b_stop: "⏹ Stop",
+            resTitle: "📊 Steady State Result", resPlaceholder: "Press [⚡ Steady State] to see results.",
+            transTitle: "📈 Transient Simulation", l_time: "Time",
+            guideTitle: "📘 App User Guide",
+            guideItems: ["<b>Add/Connect/Delete:</b> Toolbar click, drag, right-click.", "<b>Properties:</b> Double-click to edit.", "<b>Steady State:</b> Calculates final Mag/Phase.", "<b>Custom Formula:</b> Type <b>V(N1)*conj(I(R1))</b> to calc power.", "<b>Transient:</b> Time-domain graph.", "<b>FFT:</b> Frequency analysis panel.", "<b>RMS:</b> RMS values are shown in the table.", "<b>Guestbook:</b> Click Guestbook on top to leave a message."],
+            th_var: "Variable/Formula", th_mag: "Peak (Mag)", th_rms: "RMS", th_ph: "Phase (deg)"
+        }
+    };
+    function toggleLanguage(){ curLang = (curLang==='ko') ? 'en' : 'ko'; updateText(); }
+    function updateText(){
+        const t = texts[curLang]; document.getElementById('app-title').innerText = t.appTitle; document.getElementById('lang-btn').innerText = t.langBtn;
+        document.querySelectorAll('[data-txt]').forEach(el => { const key = el.getAttribute('data-txt'); if(t[key]) el.innerHTML = t[key]; });
+        document.getElementById('guide-list').innerHTML = t.guideItems.map(item => `<li>${item}</li>`).join('');
+        if(steadyResults) renderSteadyResults();
+    }
 
-            // Store Nodes
-            for(let i=0;i<N;i++){
-                steadyResults.nodes[`N${invMap[i]}`] = X.get([i,0]);
-            }
-            // Add Ground (N0)
-            steadyResults.nodes[`N0`] = math.complex(0,0);
+    // --- SETUP & DRAWING ---
+    const stage=new Konva.Stage({container:'container',width:100,height:100});
+    const layer=new Konva.Layer(); stage.add(layer);
+    let railCount=6; const MAX_RAILS=30; const START_X=230, BASE_W=120;
+    let groundRails = new Set([1]); 
+    new ResizeObserver(()=>{const c=document.getElementById('container');if(c.offsetWidth>0){stage.width(c.offsetWidth);stage.height(c.offsetHeight);drawGrid();}}).observe(document.getElementById('container'));
+    
+    function getGridMetrics() { const w=stage.width(), h=stage.height(); let rw=BASE_W; if(START_X+railCount*rw > w-20) rw=(w-START_X-20)/railCount; if(rw<30) rw=30; let compScale = Math.min(1, (rw * 0.9) / 100); return {rw, gndY:h*0.9, compScale}; }
+    function drawGrid(){
+        layer.find('.g').forEach(n=>n.destroy()); const {rw, gndY} = getGridMetrics();
+        layer.add(new Konva.Line({points:[START_X-20, gndY, START_X+railCount*rw, gndY], stroke:'#212529', strokeWidth:3, name:'g'}));
+        layer.add(new Konva.Text({x:START_X-50, y:gndY+10, text:'0 (GND)', fontStyle:'bold', fill:'#212529', name:'g'}));
+        for(let i=1; i<=railCount; i++){
+            const x=START_X+(i-1)*rw; const isG = groundRails.has(i); 
+            const l=new Konva.Line({points:[x,40,x,gndY], stroke: isG ? '#212529' : '#adb5bd', strokeWidth: isG ? 3 : 1, dash: isG ? [] : [4,4], name:'g'});
+            const grp=new Konva.Group({x:x,y:20,name:'g'});
+            grp.add(new Konva.Rect({x:-14,y:-10,width:28,height:20,fill:isG?'#343a40':'#fff',stroke:'#ced4da',cornerRadius:10}));
+            grp.add(new Konva.Text({x:-14,y:-5,width:28,align:'center',text: isG ? `G${i}` : `${i}`, fill: isG ? '#fff' : '#495057', fontSize:10,fontStyle:'bold'}));
+            grp.on('mouseenter',()=>document.body.style.cursor='pointer'); grp.on('mouseleave',()=>document.body.style.cursor='default');
+            grp.on('click', () => { if(groundRails.has(i)) groundRails.delete(i); else groundRails.add(i); drawGrid(); });
+            layer.add(l); layer.add(grp);
+        }
+        components.forEach(c=>updateComp(c)); layer.draw();
+    }
+    function updateRailCount(d){let n=railCount+d;if(n<2||n>MAX_RAILS)return;railCount=n;drawGrid();}
 
-            // Store Currents
-            components.forEach(c => {
-                let I = math.complex(0,0);
-                const n1=map[c.nL], n2=map[c.nR];
-                const v1 = n1>=0 ? X.get([n1,0]) : math.complex(0,0);
-                const v2 = n2>=0 ? X.get([n2,0]) : math.complex(0,0);
-                const V_drop = math.subtract(v1, v2);
-                if(c.type === 'R') { I = math.divide(V_drop, c.val); } 
-                else if(c.type === 'L') { const Z = math.complex(0, w*c.val); I = (w===0)?math.complex(1e9,0):math.divide(V_drop, Z); } 
-                else if(c.type === 'C') { const Z = (w===0)?math.complex(1e9,0):math.complex(0, -1/(w*c.val)); I = math.divide(V_drop, Z); } 
-                else if(c.type.includes('V')) { I = X.get([vOff + Vs.indexOf(c), 0]); } 
-                else if(c.type === 'I_AC') { 
-                    const phi = (c.phase || 0) * Math.PI / 180;
-                    I = math.complex(c.val * Math.cos(phi), c.val * Math.sin(phi)); 
-                }
-                else if(c.type === 'T') { I = X.get([tOff + Ts.indexOf(c), 0]); }
-                steadyResults.currents[c.name] = I;
-            });
-            
-            renderSteadyResults();
+    let components=[], idCnt={R:0,L:0,C:0,V:0,T:0,I:0};
+    function spawn(type, params=null){ 
+        let c;
+        if(params) { c = { ...params }; c.group = null; c.lineL = null; c.lineR = null; c.labelObj = null; } 
+        else {
+            let cat=type.includes('V')?'V':(type.includes('I')?'I':type.charAt(0)); idCnt[cat]++; const name=cat+idCnt[cat];
+            c={name,type,val:0,freq:60,phase:0,unit:'',nL:1,nR:2,ratio:1, group:null, lineL:null, lineR:null};
+            if(type==='R'){c.val=1000;c.unit='Ω';} else if(type==='L'){c.val=10e-3;c.unit='H';} else if(type==='C'){c.val=100e-6;c.unit='F';}
+            else if(type==='V_DC'){c.val=10;c.unit='V';} else if(type==='V_AC'){c.val=220;c.unit='V';}
+            else if(type==='I_AC'){c.val=1;c.unit='A';}
+            else if(type==='T'){c.ratio=1;c.unit='';}
+        }
+        const {rw} = getGridMetrics();
+        let sx = START_X + rw/2; let sy = 100;
+        if(!params && components.length > 0) { sy += 60; }
+        const initX = (c.uiX !== undefined) ? c.uiX : sx; const initY = (c.uiY !== undefined) ? c.uiY : sy;
+        const g=new Konva.Group({x:initX,y:initY,draggable:true});
+        const wL=new Konva.Line({points:[],stroke:'#000',strokeWidth:2,dash:[2,2],name:'w'});
+        const wR=new Konva.Line({points:[],stroke:'#000',strokeWidth:2,dash:[2,2],name:'w'}); 
+        layer.add(wL); layer.add(wR); c.lineL=wL; c.lineR=wR;
+        const shape=drawShape(c.type); g.add(shape);
+        const lbl=new Konva.Text({x:-50,y:-50,width:100,align:'center',fontSize:12,fontStyle:'bold',fill:'#333',text:getLabel(c)});
+        g.add(lbl); c.labelObj=lbl; c.group=g;
+        g.on('dragmove',()=>updateComp(c, true));
+        g.on('dragend',()=>{
+            c.uiX = g.x(); c.uiY = g.y(); const {rw} = getGridMetrics(); const gx = g.x(); const isVertical = (c.nL === 0 || c.nR === 0);
+            if(isVertical) {
+                let idx = Math.round((gx - START_X) / rw) + 1; 
+                if(idx < 1) idx = 1; if(idx > railCount) idx = railCount;
+                if(c.nL === 0) c.nR = idx; else c.nL = idx;
+            } else {
+                let leftIdx = Math.round((gx - START_X - rw/2) / rw); 
+                let nLeft = leftIdx + 1; if(nLeft < 1) nLeft = 1; if(nLeft >= railCount) nLeft = railCount - 1;
+                c.nL = nLeft; c.nR = nLeft + 1;
+            }
+            updateComp(c);
+        });
+        g.on('dblclick',()=>{
+            let def=`${c.nL},${c.nR}`, promptMsg=`[${c.name}] N1, N2`;
+            if(c.type==='T'){promptMsg+=`, Ratio`;def+=`,${c.ratio}`;} else {promptMsg+=`, Val`;def+=`,${formatUnit(c.val,'').replace(/[a-zA-Z]*$/,'')}`;}
+            if(c.type.includes('AC')){promptMsg+=`, Freq, Phase(deg)`;def+=`,${c.freq},${c.phase||0}`;}
+            const ret=prompt(promptMsg, def);
+            if(ret){
+                const p=ret.split(','); const newNL=parseInt(p[0]), newNR=parseInt(p[1]);
+                const nodes = [newNL, newNR].sort((a,b)=>a-b);
+                if(nodes[0]===0 && nodes[1]===1) return alert("Error: 0-1 connect forbidden");
+                if(nodes[0]===0 && nodes[1]===railCount) return alert("Error: 0-End connect forbidden");
+                if(nodes[0]===1 && nodes[1]===railCount) return alert("Error: 1-End connect forbidden");
+                c.nL=newNL; c.nR=newNR;
+                if(c.type==='T'){if(p[2])c.ratio=parseFloat(p[2]);} else {if(p[2])c.val=parseUnit(p[2]); 
+                if(c.type.includes('AC')){
+                    if(p[3])c.freq=parseUnit(p[3]); 
+                    if(p[4])c.phase=parseFloat(p[4]); else c.phase=0;
+                }}
+                lbl.text(getLabel(c)); updateComp(c); layer.draw();
+            }
+        });
+        g.on('contextmenu',(e)=>{e.evt.preventDefault();if(confirm('Delete?')){g.destroy();c.lineL.destroy();c.lineR.destroy();components=components.filter(x=>x!==c);layer.draw();}});
+        components.push(c); layer.add(g); updateComp(c); layer.draw();
+    }
 
-        } catch(e){
-            console.error(e);
-            document.getElementById('res-content').innerHTML='Matrix Error (Singular?)'; 
-        }
-    }
+    function updateComp(c, dragging=false){
+        const {rw, gndY, compScale} = getGridMetrics(); const isVertical = (c.nL === 0 || c.nR === 0);
+        c.group.scale({x: compScale, y: compScale});
+        if (dragging) { return; } 
+        if (isVertical) {
+            const targetNode = (c.nL === 0) ? c.nR : c.nL; const tx = START_X + (targetNode-1)*rw; 
+            let ty = c.group.y(); if(ty < 60) ty = 60; if(ty > gndY - 60) ty = gndY - 60;
+            c.group.rotation(90); c.group.position({x:tx, y:ty});
+            c.lineL.points([tx, 40, tx, ty - 50*compScale]); c.lineR.points([tx, ty + 50*compScale, tx, gndY]); 
+            c.labelObj.rotation(-90); c.labelObj.absolutePosition({x: tx + 10, y: ty - 6}); 
+        } else {
+            const xL = START_X + (c.nL-1)*rw; const xR = START_X + (c.nR-1)*rw; const cx = (xL + xR) / 2;
+            c.group.rotation(0); c.group.x(cx);
+            let cy = c.group.y(); if(cy < 60) cy = 60; if(cy > gndY - 20) cy = gndY - 20; 
+            c.group.y(cy);
+            c.lineL.points([xL, cy, cx - 50*compScale, cy]); c.lineR.points([cx + 50*compScale, cy, xR, cy]);
+            c.labelObj.rotation(0); c.labelObj.x(-50); c.labelObj.y(-50);
+        }
+        const col=c.type==='T'?'#f08c00':'#333'; c.lineL.stroke(col); c.lineL.dash([4,4]); c.lineR.stroke(col); c.lineR.dash([4,4]);
+    }
 
-    function renderSteadyResults() {
-        if(!steadyResults) return;
-        const t=texts[curLang];
-        let h=`<table class="res-table"><tr><th>${t.th_var}</th><th>${t.th_mag}</th><th>${t.th_rms}</th><th>${t.th_ph}</th><th></th></tr>`;
-        
-        // Helper to format row
-        const row = (lbl, val) => {
-            let cmplx = (val && val.re!==undefined) ? val : math.complex(val||0);
-            let p = cmplx.toPolar();
-            let rms = p.r / Math.SQRT2;
-            return `<tr><td>${lbl}</td><td>${formatUnit(p.r,'')}</td><td>${formatUnit(rms,'')}</td><td>${(p.phi*180/Math.PI).toFixed(1)}°</td><td></td></tr>`;
-        };
+    function getLabel(c){
+        if(c.type==='T') return `${c.name}\n1:${c.ratio}`;
+        let t=`${c.name}\n${formatUnit(c.val,c.unit)}`;
+        if(c.type.includes('AC')) t+=`\n${formatUnit(c.freq,'Hz')} ∠${c.phase||0}°`;
+        return t;
+    }
 
-        // Standard Rows
-        Object.keys(steadyResults.nodes).sort().forEach(k => {
-            if(k!=='N0') h += row(`V(${k})`, steadyResults.nodes[k]);
-        });
-        Object.keys(steadyResults.currents).forEach(k => {
-            h += row(`I(${k})`, steadyResults.currents[k]);
-        });
+    function drawShape(type) {
+        const g=new Konva.Group({offsetX:50,offsetY:20});
+        g.add(new Konva.Rect({width:100,height:40,fill:'transparent'}));
+        const l=(p,w=2,col='#333')=>new Konva.Line({points:p,stroke:col,strokeWidth:w,lineCap:'round',lineJoin:'round'});
+        const mid=20;
+        if(type==='R') g.add(l([0,mid, 20,mid, 25,mid-10, 35,mid+10, 45,mid-10, 55,mid+10, 65,mid-10, 75,mid+10, 80,mid, 100,mid]));
+        else if(type==='L'){ g.add(new Konva.Path({x:20, y:mid, data:`M0,0 Q7,-15 14,0 Q21,-15 28,0 Q35,-15 42,0 Q49,-15 56,0`, stroke:'#333', strokeWidth:2})); g.add(l([0,mid, 20,mid])); g.add(l([76,mid, 100,mid])); }
+        else if(type==='C'){ g.add(l([0,mid, 45,mid])); g.add(l([55,mid, 100,mid])); g.add(l([45,mid-12, 45,mid+12])); g.add(l([55,mid-12, 55,mid+12])); }
+        else if(type.includes('V')){
+            g.add(l([0,mid, 40,mid])); g.add(l([60,mid, 100,mid]));
+            if(type==='V_DC'){ g.add(l([40,mid-8, 40,mid+8], 3)); g.add(l([60,mid-16, 60,mid+16], 3)); g.add(new Konva.Text({x:65, y:mid-15, text:'+', fontSize:14, fill:'red', fontStyle:'bold'})); } 
+            else { g.add(new Konva.Circle({x:50, y:mid, radius:15, stroke:'#333', strokeWidth:2, fill:'white'})); g.add(new Konva.Path({x:43, y:mid, data:`M0,0 Q3.5,-6 7,0 T14,0`, stroke:'#333', strokeWidth:2})); }
+        }
+        else if(type==='I_AC') {
+            g.add(l([0,mid, 40,mid])); g.add(l([60,mid, 100,mid]));
+            g.add(new Konva.Circle({x:50, y:mid, radius:15, stroke:'#333', strokeWidth:2, fill:'white'}));
+            g.add(new Konva.Arrow({points:[60, mid, 40, mid], pointerLength:6, pointerWidth:6, fill:'#333', stroke:'#333', strokeWidth:2}));
+        }
+        else if(type==='T') {
+            g.add(l([48, 5, 48, 35], 2)); g.add(l([52, 5, 52, 35], 2));
+            g.add(l([0,20, 25,20, 25,10, 35,10], 2)); 
+            g.add(new Konva.Path({ data: "M35,10 c-6,0 -6,6 0,6 c-6,0 -6,6 0,6 c-6,0 -6,6 0,6", stroke: '#333', strokeWidth: 2, lineCap: 'round', lineJoin: 'round' }));
+            g.add(l([35,28, 35,32], 2)); g.add(l([28,32, 42,32], 2)); g.add(l([31,35, 39,35], 2)); g.add(l([34,38, 36,38], 2));
+            g.add(l([100,20, 75,20, 75,10, 65,10], 2)); 
+            g.add(new Konva.Path({ data: "M65,10 c6,0 6,6 0,6 c6,0 6,6 0,6 c6,0 6,6 0,6", stroke: '#333', strokeWidth: 2, lineCap: 'round', lineJoin: 'round' }));
+            g.add(l([65,28, 65,32], 2)); g.add(l([58,32, 72,32], 2)); g.add(l([61,35, 69,35], 2)); g.add(l([64,38, 66,38], 2));
+        }
+        return g;
+    }
 
-        // Custom Formulas
-        if(customFormulas.length > 0) {
-            // Prepare Math Scope
-            const scope = { 
-                ...steadyResults.nodes, // N1, N2... (Direct complex values if user types N1)
-                ...steadyResults.currents, // R1, L1... (Direct current values if user types R1? No, usually I(R1))
-                // Add aliases for ease of use
-                real: math.re, imaginary: math.im, absolute: math.abs,
-                // Functions V(node) and I(comp)
-                V: function(n) { 
-                    // Handle V("N1") or V(N1) where N1 is passed as val
-                    let key = n;
-                    if(typeof n !== 'string') { // If passed as variable, find key? Hard.
-                        // Instead, let's assume user passes string "N1" or variable N1 which is defined in scope?
-                        // Actually, easier: define scope.N1 = "N1".
-                    }
-                    return steadyResults.nodes[key] || math.complex(0,0);
-                },
-                I: function(c) { return steadyResults.currents[c] || math.complex(0,0); }
-            };
-            // Add Node/Comp names as strings to scope so V(N1) works (N1 is var "N1")
-            Object.keys(steadyResults.nodes).forEach(k => scope[k] = k);
-            Object.keys(steadyResults.currents).forEach(k => scope[k] = k);
+    // --- SIMULATION ---
+    let lastSimResult = null; 
+    let steadyResults = null; 
+    let customFormulas = [];
 
-            customFormulas.forEach((fmt, idx) => {
-                try {
-                    const res = math.evaluate(fmt, scope);
-                    h += `<tr class="custom-row"><td>${fmt}</td>`;
-                    // Check if result is number or complex
-                    let cmplx = (typeof res === 'object' && res.re!==undefined) ? res : math.complex(res);
-                    let p = cmplx.toPolar();
-                    let rms = p.r / Math.SQRT2;
-                    h += `<td>${formatUnit(p.r,'')}</td><td>${formatUnit(rms,'')}</td><td>${(p.phi*180/Math.PI).toFixed(3)}°</td>`;
-                    h += `<td><button class="btn-del-row" onclick="removeCustomFormula(${idx})">×</button></td></tr>`;
-                } catch(e) {
-                    h += `<tr class="custom-row"><td>${fmt}</td><td colspan="3" style="color:red">Error</td><td><button class="btn-del-row" onclick="removeCustomFormula(${idx})">×</button></td></tr>`;
-                }
-            });
-        }
-        
-        document.getElementById('res-content').innerHTML=h+`</table>`;
-    }
+    function getSetup(){
+        if(components.length===0)return alert('No parts');
+        const map={}; map[0] = -1; 
+        let matrixIdx = 0; const compactMap = {}; compactMap[0] = -1;
+        for(let i=1; i<=railCount; i++){ if(groundRails.has(i)) compactMap[i] = -1; else compactMap[i] = matrixIdx++; }
+        return {map: compactMap, N: matrixIdx};
+    }
 
-    function addCustomFormula() {
-        const inp = document.getElementById('formula-inp');
-        const val = inp.value.trim();
-        if(!val) return;
-        customFormulas.push(val);
-        inp.value = '';
-        if(steadyResults) renderSteadyResults();
-        else alert("Run Steady State analysis first to verify formula.");
-    }
-    function removeCustomFormula(idx) {
-        customFormulas.splice(idx, 1);
-        renderSteadyResults();
-    }
+    function runSteady() {
+        const s=getSetup(); if(!s)return; const {map,N}=s;
+        const ac=components.find(c=>c.type.includes('AC')), freq=ac?ac.freq:0, w=2*Math.PI*freq;
+        const Vs=components.filter(c=>c.type.includes('V')), Ts=components.filter(c=>c.type==='T');
+        const size=N+Vs.length+Ts.length;
+        let A=math.zeros(size,size,'dense'), B=math.zeros(size,1,'dense');
+        
+        const vOff=N, tOff=vOff+Vs.length;
+        components.forEach(c=>{
+            const n1=map[c.nL], n2=map[c.nR];
+            if(['R','L','C'].includes(c.type)) {
+                let Y = math.complex(0,0);
+                if(c.type==='R') Y=math.complex(1/c.val,0);
+                else if(c.type==='L') Y=(w===0)?math.complex(1e9,0):math.complex(0, -1/(w*c.val));
+                else if(c.type==='C') Y=(w===0)?math.complex(0,0):math.complex(0, w*c.val);
+                if(n1>=0) A.set([n1,n1],math.add(A.get([n1,n1]),Y));
+                if(n2>=0) A.set([n2,n2],math.add(A.get([n2,n2]),Y));
+                if(n1>=0&&n2>=0){
+                    const nY=math.multiply(Y,-1);
+                    A.set([n1,n2],math.add(A.get([n1,n2]),nY));
+                    A.set([n2,n1],math.add(A.get([n2,n1]),nY)); 
+                }
+            }
+            else if(c.type.includes('V')) {
+                const idx=vOff+Vs.indexOf(c);
+                if(n2>=0){A.set([n2,idx],1);A.set([idx,n2],1);} if(n1>=0){A.set([n1,idx],-1);A.set([idx,n1],-1);}
+                const phi = (c.phase || 0) * Math.PI / 180;
+                B.set([idx,0], math.complex(c.val * Math.cos(phi), c.val * Math.sin(phi)));
+            }
+            else if(c.type === 'I_AC') {
+                const phi = (c.phase || 0) * Math.PI / 180;
+                const I = math.complex(c.val * Math.cos(phi), c.val * Math.sin(phi));
+                if(n1>=0) B.set([n1,0], math.add(B.get([n1,0]), I));
+                if(n2>=0) B.set([n2,0], math.subtract(B.get([n2,0]), I));
+            }
+            else if(c.type==='T') {
+                const idx=tOff+Ts.indexOf(c);
+                if(n2>=0){A.set([n2,idx],1);A.set([idx,n2],1);} if(n1>=0){A.set([n1,idx],-c.ratio);A.set([idx,n1],-c.ratio);}
+            }
+        });
 
-    // --- (Transient, Graph, FFT functions remain same as v44) ---
-    // ... [Copy rest of the functions from previous answer: startSimulation, drawChart, updateFFTSources, performFFT, etc.] ...
-    let abortSim=false;
-    function stopSimulation(){abortSim=true;document.getElementById('progress-overlay').style.display='none';}
-    function autoSetParams(){
-        let f=60; const ac=components.filter(c=>c.type.includes('AC')); if(ac.length>0)f=Math.max(...ac.map(c=>c.freq));
-        const T=1/f; let tMax=3*T, dt=T/200; if(tMax/dt>5000)dt=tMax/5000;
-        let u='s'; if(tMax<1e-6)u='us'; else if(tMax<1e-3)u='ms';
-        const sc=(u==='us')?1e6:(u==='ms')?1e3:1;
-        document.getElementById('timeUnit').value=u; document.getElementById('xMax').value=(tMax*sc).toFixed(1);
-        document.getElementById('xMin').value=0; document.getElementById('dtInput').value=formatEng(dt);
-        alert(`Auto: ${formatUnit(f,'Hz')}, dt=${formatEng(dt)}`);
-    }
+        try {
+            const X=math.lusolve(A,B);
+            
+            steadyResults = { nodes: {}, currents: {} };
+            const invMap = {}; Object.keys(map).forEach(k=>{if(map[k]>=0)invMap[map[k]]=k;});
 
-    async function startSimulation() {
-        const s=getSetup(); if(!s)return; const {map,N}=s;
-        const dt=parseUnit(document.getElementById('dtInput').value);
-        if(isNaN(dt)||dt<=0)return alert("Invalid dt");
-        const u=document.getElementById('timeUnit').value, sc=(u==='ps')?1e-12:(u==='us')?1e-6:(u==='ms')?1e-3:1;
-        const tMin=parseFloat(document.getElementById('xMin').value)*sc, tMax=parseFloat(document.getElementById('xMax').value)*sc;
-        const steps=Math.floor(tMax/dt);
-        if(steps>100000 && !confirm(`Points: ${steps}. Continue?`)) return;
+            for(let i=0;i<N;i++){
+                steadyResults.nodes[`N${invMap[i]}`] = X.get([i,0]);
+            }
+            steadyResults.nodes[`N0`] = math.complex(0,0);
 
-        abortSim=false;
-        const pOv=document.getElementById('progress-overlay'), pFill=document.getElementById('p-fill'), pTxt=document.getElementById('status-text');
-        pOv.style.display='flex'; pFill.style.width='0%'; pTxt.innerText='Init...';
+            components.forEach(c => {
+                let I = math.complex(0,0);
+                const n1=map[c.nL], n2=map[c.nR];
+                const v1 = n1>=0 ? X.get([n1,0]) : math.complex(0,0);
+                const v2 = n2>=0 ? X.get([n2,0]) : math.complex(0,0);
+                const V_drop = math.subtract(v1, v2);
+                if(c.type === 'R') { I = math.divide(V_drop, c.val); } 
+                else if(c.type === 'L') { const Z = math.complex(0, w*c.val); I = (w===0)?math.complex(1e9,0):math.divide(V_drop, Z); } 
+                else if(c.type === 'C') { const Z = (w===0)?math.complex(1e9,0):math.complex(0, -1/(w*c.val)); I = math.divide(V_drop, Z); } 
+                else if(c.type.includes('V')) { I = X.get([vOff + Vs.indexOf(c), 0]); } 
+                else if(c.type === 'I_AC') { 
+                    const phi = (c.phase || 0) * Math.PI / 180;
+                    I = math.complex(c.val * Math.cos(phi), c.val * Math.sin(phi)); 
+                }
+                else if(c.type === 'T') { I = X.get([tOff + Ts.indexOf(c), 0]); }
+                steadyResults.currents[c.name] = I;
+            });
+            
+            renderSteadyResults();
 
-        const Ls=components.filter(c=>c.type==='L'), Vs=components.filter(c=>c.type.includes('V'));
-        const Is=components.filter(c=>c.type==='I_AC');
-        const Cs=components.filter(c=>c.type==='C'), Ts=components.filter(c=>c.type==='T');
-        const size=N+Ls.length+Vs.length+Ts.length;
-        let x=math.zeros(size,1);
-        const c_prev_V=[], c_prev_I=[], l_prev_V=[], l_prev_I=[];
-        Cs.forEach(()=>{c_prev_V.push(0);c_prev_I.push(0)}); Ls.forEach(()=>{l_prev_V.push(0);l_prev_I.push(0)});
+        } catch(e){
+            console.error(e);
+            document.getElementById('res-content').innerHTML='Matrix Error (Singular?)'; 
+        }
+    }
 
-        let A=math.zeros(size,size);
-        const lOff=N, vOff=N+Ls.length, tOff=vOff+Vs.length;
-        const addA=(r,c,v)=>{if(r>=0&&c>=0)A.set([r,c],A.get([r,c])+v)};
+    function renderSteadyResults() {
+        if(!steadyResults) return;
+        const t=texts[curLang];
+        let h=`<table class="res-table"><tr><th>${t.th_var}</th><th>${t.th_mag}</th><th>${t.th_rms}</th><th>${t.th_ph}</th><th></th></tr>`;
+        
+        const row = (lbl, val) => {
+            let cmplx = (val && val.re!==undefined) ? val : math.complex(val||0);
+            let p = cmplx.toPolar();
+            let rms = p.r / Math.SQRT2;
+            return `<tr><td>${lbl}</td><td>${formatUnit(p.r,'')}</td><td>${formatUnit(rms,'')}</td><td>${(p.phi*180/Math.PI).toFixed(1)}°</td><td></td></tr>`;
+        };
 
-        components.forEach(c=>{
-            const n1=map[c.nL], n2=map[c.nR];
-            if(c.type==='R'){ const g=1/c.val; addA(n1,n1,g); addA(n2,n2,g); addA(n1,n2,-g); addA(n2,n1,-g); }
-            else if(c.type==='C'){ const g=(2*c.val)/dt; addA(n1,n1,g); addA(n2,n2,g); addA(n1,n2,-g); addA(n2,n1,-g); }
-            else if(c.type==='L'){ const idx=lOff+Ls.indexOf(c), r=(2*c.val)/dt; if(n1>=0){A.set([n1,idx],1);A.set([idx,n1],1);} if(n2>=0){A.set([n2,idx],-1);A.set([idx,n2],-1);} A.set([idx,idx],-r); }
-            else if(c.type.includes('V')){ const idx=vOff+Vs.indexOf(c); if(n2>=0){A.set([n2,idx],1);A.set([idx,n2],1);} if(n1>=0){A.set([n1,idx],-1);A.set([idx,n1],-1);} }
-            else if(c.type==='T'){ const idx=tOff+Ts.indexOf(c); if(n2>=0){A.set([n2,idx],1);A.set([idx,n2],1);} if(n1>=0){A.set([n1,idx],-c.ratio);A.set([idx,n1],-c.ratio);} }
-        });
+        Object.keys(steadyResults.nodes).sort().forEach(k => {
+            if(k!=='N0') h += row(`V(${k})`, steadyResults.nodes[k]);
+        });
+        Object.keys(steadyResults.currents).forEach(k => {
+            h += row(`I(${k})`, steadyResults.currents[k]);
+        });
 
-        const resV=Array(N).fill(0).map(()=>[]), resI=[];
-        components.forEach(c=>resI.push([]));
-        const timeLog=[]; const chunk=500;
+        if(customFormulas.length > 0) {
+            const scope = { 
+                ...steadyResults.nodes, 
+                ...steadyResults.currents, 
+                real: math.re, imaginary: math.im, absolute: math.abs,
+                V: function(n) { return steadyResults.nodes[n] || math.complex(0,0); },
+                I: function(c) { return steadyResults.currents[c] || math.complex(0,0); }
+            };
+            Object.keys(steadyResults.nodes).forEach(k => scope[k] = k);
+            Object.keys(steadyResults.currents).forEach(k => scope[k] = k);
 
-        for(let s=0; s<steps; s++){
-            if(abortSim) break;
-            const t=s*dt;
-            if(s%chunk===0){ pFill.style.width=`${(s/steps)*100}%`; pTxt.innerText=`${Math.round(s/steps*100)}%`; await new Promise(r=>setTimeout(r,0)); }
+            customFormulas.forEach((fmt, idx) => {
+                try {
+                    const res = math.evaluate(fmt, scope);
+                    h += `<tr class="custom-row"><td>${fmt}</td>`;
+                    let cmplx = (typeof res === 'object' && res.re!==undefined) ? res : math.complex(res);
+                    let p = cmplx.toPolar();
+                    let rms = p.r / Math.SQRT2;
+                    h += `<td>${formatUnit(p.r,'')}</td><td>${formatUnit(rms,'')}</td><td>${(p.phi*180/Math.PI).toFixed(3)}°</td>`;
+                    h += `<td><button class="btn-del-row" onclick="removeCustomFormula(${idx})">×</button></td></tr>`;
+                } catch(e) {
+                    h += `<tr class="custom-row"><td>${fmt}</td><td colspan="3" style="color:red">Error</td><td><button class="btn-del-row" onclick="removeCustomFormula(${idx})">×</button></td></tr>`;
+                }
+            });
+        }
+        document.getElementById('res-content').innerHTML=h+`</table>`;
+    }
 
-            let B=math.zeros(size,1); const addB=(r,v)=>{if(r>=0)B.set([r,0],B.get([r,0])+v)};
-            Cs.forEach((c,i)=>{const n1=map[c.nL], n2=map[c.nR]; const G=(2*c.val)/dt; const I_inj=G*c_prev_V[i]+c_prev_I[i]; addB(n1,I_inj); addB(n2,-I_inj);});
-            Ls.forEach((c,i)=>{const idx=lOff+i, R=(2*c.val)/dt, v_eq = -l_prev_V[i] - R*l_prev_I[i]; B.set([idx,0], v_eq);});
-            
-            // Transient Sources
-            Vs.forEach((c,i)=>{
-                const idx=vOff+i; let v=c.val; 
-                if(c.type==='V_AC') v *= Math.sin(2*Math.PI*c.freq*t + (c.phase||0)*Math.PI/180); 
-                else if(t<0) v=0; 
-                B.set([idx,0], v);
-            });
-            Is.forEach((c)=>{
-                let val = c.val * Math.sin(2*Math.PI*c.freq*t + (c.phase||0)*Math.PI/180);
-                if(map[c.nL]>=0) B.set([map[c.nL],0], B.get([map[c.nL],0]) + val);
-                if(map[c.nR]>=0) B.set([map[c.nR],0], B.get([map[c.nR],0]) - val);
-            });
-            
-            try{
-                x=math.lusolve(A,B);
-                Cs.forEach((c,i)=>{const v1=map[c.nL]>=0?x.get([map[c.nL],0]):0, v2=map[c.nR]>=0?x.get([map[c.nR],0]):0, v=v1-v2; const G=(2*c.val)/dt, i_new = -c_prev_I[i] + G*(v - c_prev_V[i]); c_prev_V[i]=v; c_prev_I[i]=i_new;});
-                Ls.forEach((c,i)=>{const i_new=x.get([lOff+i,0]), v1=map[c.nL]>=0?x.get([map[c.nL],0]):0, v2=map[c.nR]>=0?x.get([map[c.nR],0]):0; l_prev_I[i]=i_new; l_prev_V[i]=v1-v2;});
-                
-                if(t>=tMin){ 
-                    timeLog.push(t); 
-                    for(let i=0;i<N;i++) resV[i].push(x.get([i,0])); 
-                    components.forEach((c, idx) => {
-                        let iVal = 0;
-                        if(c.type==='R') { const v1=map[c.nL]>=0?x.get([map[c.nL],0]):0, v2=map[c.nR]>=0?x.get([map[c.nR],0]):0; iVal = (v1-v2)/c.val; }
-                        else if(c.type==='C') iVal = c_prev_I[Cs.indexOf(c)]; 
-                        else if(c.type==='L') iVal = l_prev_I[Ls.indexOf(c)];
-                        else if(c.type.includes('V')) iVal = x.get([vOff+Vs.indexOf(c), 0]); 
-                        else if(c.type==='I_AC') iVal = c.val * Math.sin(2*Math.PI*c.freq*t + (c.phase||0)*Math.PI/180);
-                        else if(c.type==='T') iVal = x.get([tOff+Ts.indexOf(c), 0]); 
-                        resI[idx].push(iVal);
-                    });
-                }
-            } catch(e){break;}
-        }
-        pOv.style.display='none';
-        
-        lastSimResult = { dt, resV, resI, N, map };
-        drawChart(timeLog, resV, resI, N, map, sc, u);
-        
-        // Auto update FFT if possible
-        updateFFTSources();
-        performFFT();
-    }
+    function addCustomFormula() {
+        const inp = document.getElementById('formula-inp');
+        const val = inp.value.trim();
+        if(!val) return;
+        customFormulas.push(val);
+        inp.value = '';
+        if(steadyResults) renderSteadyResults();
+        else alert("Run Steady State analysis first to verify formula.");
+    }
+    function removeCustomFormula(idx) {
+        customFormulas.splice(idx, 1);
+        renderSteadyResults();
+    }
 
-    let myChart=null;
-    function drawChart(times, vData, iData, N, map, scale, unitStr) {
-        const ctx=document.getElementById('myChart').getContext('2d');
-        if(myChart) myChart.destroy();
-        const labels=times.map(t=>(t/scale).toFixed(3));
-        const sets=[]; const cols=['#e03131','#1971c2','#2f9e44','#f08c00','#9c36b5'];
-        const invMap = {}; Object.keys(map).forEach(k => { if(map[k] >= 0) invMap[map[k]] = k; });
+    let abortSim=false;
+    function stopSimulation(){abortSim=true;document.getElementById('progress-overlay').style.display='none';}
+    function autoSetParams(){
+        let f=60; const ac=components.filter(c=>c.type.includes('AC')); if(ac.length>0)f=Math.max(...ac.map(c=>c.freq));
+        const T=1/f; let tMax=3*T, dt=T/200; if(tMax/dt>5000)dt=tMax/5000;
+        let u='s'; if(tMax<1e-6)u='us'; else if(tMax<1e-3)u='ms';
+        const sc=(u==='us')?1e6:(u==='ms')?1e3:1;
+        document.getElementById('timeUnit').value=u; document.getElementById('xMax').value=(tMax*sc).toFixed(1);
+        document.getElementById('xMin').value=0; document.getElementById('dtInput').value=formatEng(dt);
+        alert(`Auto: ${formatUnit(f,'Hz')}, dt=${formatEng(dt)}`);
+    }
 
-        for(let i=0;i<N;i++){
-            sets.push({ label:`V(N${invMap[i]})`, data:vData[i], borderColor:cols[i%cols.length], borderWidth:2, pointRadius:0, yAxisID: 'y' });
-        }
-        components.forEach((c, idx) => {
-            const hidden = !(c.type.includes('V') || c.type==='L' || c.type==='I_AC');
-            sets.push({ label:`I(${c.name})`, data:iData[idx], borderColor: '#868e96', borderWidth:1.5, borderDash: [5, 5], pointRadius:0, hidden: true, yAxisID: 'y' });
-        });
+    async function startSimulation() {
+        const s=getSetup(); if(!s)return; const {map,N}=s;
+        const dt=parseUnit(document.getElementById('dtInput').value);
+        if(isNaN(dt)||dt<=0)return alert("Invalid dt");
+        const u=document.getElementById('timeUnit').value, sc=(u==='ps')?1e-12:(u==='us')?1e-6:(u==='ms')?1e-3:1;
+        const tMin=parseFloat(document.getElementById('xMin').value)*sc, tMax=parseFloat(document.getElementById('xMax').value)*sc;
+        const steps=Math.floor(tMax/dt);
+        if(steps>100000 && !confirm(`Points: ${steps}. Continue?`)) return;
 
-        const yMax=document.getElementById('yMax').value;
-        myChart=new Chart(ctx,{
-            type:'line',data:{labels,datasets:sets},
-            options:{
-                responsive:true,maintainAspectRatio:false,animation:false,
-                scales:{ x:{title:{display:true,text:`Time (${unitStr})`},ticks:{maxTicksLimit:8}}, y:{min:yMax?-yMax:undefined,max:yMax?yMax:undefined, title:{display:true, text:'Voltage (V) / Current (A)'}} },
-                plugins: { legend: { labels: { usePointStyle: true, boxWidth: 6 } } }
-            }
-        });
-    }
+        abortSim=false;
+        const pOv=document.getElementById('progress-overlay'), pFill=document.getElementById('p-fill'), pTxt=document.getElementById('status-text');
+        pOv.style.display='flex'; pFill.style.width='0%'; pTxt.innerText='Init...';
 
-    let fftChart = null;
+        const Ls=components.filter(c=>c.type==='L'), Vs=components.filter(c=>c.type.includes('V'));
+        const Is=components.filter(c=>c.type==='I_AC');
+        const Cs=components.filter(c=>c.type==='C'), Ts=components.filter(c=>c.type==='T');
+        const size=N+Ls.length+Vs.length+Ts.length;
+        let x=math.zeros(size,1);
+        const c_prev_V=[], c_prev_I=[], l_prev_V=[], l_prev_I=[];
+        Cs.forEach(()=>{c_prev_V.push(0);c_prev_I.push(0)}); Ls.forEach(()=>{l_prev_V.push(0);l_prev_I.push(0)});
 
-    function updateFFTSources() {
-        const sel = document.getElementById('fft-src');
-        sel.innerHTML = "";
-        if(!lastSimResult) return;
-        const { map, N } = lastSimResult;
-        const invMap = {}; Object.keys(map).forEach(k => { if(map[k] >= 0) invMap[map[k]] = k; });
+        let A=math.zeros(size,size);
+        const lOff=N, vOff=N+Ls.length, tOff=vOff+Vs.length;
+        const addA=(r,c,v)=>{if(r>=0&&c>=0)A.set([r,c],A.get([r,c])+v)};
 
-        for(let i=0; i<N; i++) {
-            const opt = document.createElement('option');
-            opt.value = `v:${i}`; opt.text = `V(N${invMap[i]})`;
-            sel.appendChild(opt);
-        }
-        components.forEach((c, idx) => {
-            const opt = document.createElement('option');
-            opt.value = `i:${idx}`; opt.text = `I(${c.name})`;
-            if(c.type.includes('V') || c.type === 'L') sel.appendChild(opt); 
-        });
-    }
+        components.forEach(c=>{
+            const n1=map[c.nL], n2=map[c.nR];
+            if(c.type==='R'){ const g=1/c.val; addA(n1,n1,g); addA(n2,n2,g); addA(n1,n2,-g); addA(n2,n1,-g); }
+            else if(c.type==='C'){ const g=(2*c.val)/dt; addA(n1,n1,g); addA(n2,n2,g); addA(n1,n2,-g); addA(n2,n1,-g); }
+            else if(c.type==='L'){ const idx=lOff+Ls.indexOf(c), r=(2*c.val)/dt; if(n1>=0){A.set([n1,idx],1);A.set([idx,n1],1);} if(n2>=0){A.set([n2,idx],-1);A.set([idx,n2],-1);} A.set([idx,idx],-r); }
+            else if(c.type.includes('V')){ const idx=vOff+Vs.indexOf(c); if(n2>=0){A.set([n2,idx],1);A.set([idx,n2],1);} if(n1>=0){A.set([n1,idx],-1);A.set([idx,n1],-1);} }
+            else if(c.type==='T'){ const idx=tOff+Ts.indexOf(c); if(n2>=0){A.set([n2,idx],1);A.set([idx,n2],1);} if(n1>=0){A.set([n1,idx],-c.ratio);A.set([idx,n1],-c.ratio);} }
+        });
 
-    function performFFT() {
-        const placeholder = document.getElementById('fft-placeholder');
-        if(!lastSimResult) {
-            placeholder.style.display = 'block';
-            if(fftChart) fftChart.clear();
-            return;
-        }
-        placeholder.style.display = 'none';
+        const resV=Array(N).fill(0).map(()=>[]), resI=[];
+        components.forEach(c=>resI.push([]));
+        const timeLog=[]; const chunk=500;
 
-        const { dt, resV, resI } = lastSimResult;
-        const val = document.getElementById('fft-src').value;
-        if(!val) return; 
-        
-        let fMin = parseFloat(document.getElementById('fft-min').value);
-        let fMax = parseFloat(document.getElementById('fft-max').value);
-        if(isNaN(fMin) || fMin < 0) fMin = 0;
-        if(isNaN(fMax) || fMax <= fMin) fMax = fMin + 1000;
+        for(let s=0; s<steps; s++){
+            if(abortSim) break;
+            const t=s*dt;
+            if(s%chunk===0){ pFill.style.width=`${(s/steps)*100}%`; pTxt.innerText=`${Math.round(s/steps*100)}%`; await new Promise(r=>setTimeout(r,0)); }
 
-        const [type, idxStr] = val.split(':');
-        const idx = parseInt(idxStr);
-        const data = (type === 'v') ? resV[idx] : resI[idx];
-        
-        let spectrum = SimpleFFT.calculateSpectrum(data, dt);
-        spectrum = spectrum.filter(s => s.x >= fMin && s.x <= fMax);
+            let B=math.zeros(size,1); const addB=(r,v)=>{if(r>=0)B.set([r,0],B.get([r,0])+v)};
+            Cs.forEach((c,i)=>{const n1=map[c.nL], n2=map[c.nR]; const G=(2*c.val)/dt; const I_inj=G*c_prev_V[i]+c_prev_I[i]; addB(n1,I_inj); addB(n2,-I_inj);});
+            Ls.forEach((c,i)=>{const idx=lOff+i, R=(2*c.val)/dt, v_eq = -l_prev_V[i] - R*l_prev_I[i]; B.set([idx,0], v_eq);});
+            
+            Vs.forEach((c,i)=>{
+                const idx=vOff+i; let v=c.val; 
+                if(c.type==='V_AC') v *= Math.sin(2*Math.PI*c.freq*t + (c.phase||0)*Math.PI/180); 
+                else if(t<0) v=0; 
+                B.set([idx,0], v);
+            });
+            Is.forEach((c)=>{
+                let val = c.val * Math.sin(2*Math.PI*c.freq*t + (c.phase||0)*Math.PI/180);
+                if(map[c.nL]>=0) B.set([map[c.nL],0], B.get([map[c.nL],0]) + val);
+                if(map[c.nR]>=0) B.set([map[c.nR],0], B.get([map[c.nR],0]) - val);
+            });
+            
+            try{
+                x=math.lusolve(A,B);
+                Cs.forEach((c,i)=>{const v1=map[c.nL]>=0?x.get([map[c.nL],0]):0, v2=map[c.nR]>=0?x.get([map[c.nR],0]):0, v=v1-v2; const G=(2*c.val)/dt, i_new = -c_prev_I[i] + G*(v - c_prev_V[i]); c_prev_V[i]=v; c_prev_I[i]=i_new;});
+                Ls.forEach((c,i)=>{const i_new=x.get([lOff+i,0]), v1=map[c.nL]>=0?x.get([map[c.nL],0]):0, v2=map[c.nR]>=0?x.get([map[c.nR],0]):0; l_prev_I[i]=i_new; l_prev_V[i]=v1-v2;});
+                
+                if(t>=tMin){ 
+                    timeLog.push(t); 
+                    for(let i=0;i<N;i++) resV[i].push(x.get([i,0])); 
+                    components.forEach((c, idx) => {
+                        let iVal = 0;
+                        if(c.type==='R') { const v1=map[c.nL]>=0?x.get([map[c.nL],0]):0, v2=map[c.nR]>=0?x.get([map[c.nR],0]):0; iVal = (v1-v2)/c.val; }
+                        else if(c.type==='C') iVal = c_prev_I[Cs.indexOf(c)]; 
+                        else if(c.type==='L') iVal = l_prev_I[Ls.indexOf(c)];
+                        else if(c.type.includes('V')) iVal = x.get([vOff+Vs.indexOf(c), 0]); 
+                        else if(c.type==='I_AC') iVal = c.val * Math.sin(2*Math.PI*c.freq*t + (c.phase||0)*Math.PI/180);
+                        else if(c.type==='T') iVal = x.get([tOff+Ts.indexOf(c), 0]); 
+                        resI[idx].push(iVal);
+                    });
+                }
+            } catch(e){break;}
+        }
+        pOv.style.display='none';
+        
+        lastSimResult = { dt, resV, resI, N, map };
+        drawChart(timeLog, resV, resI, N, map, sc, u);
+        
+        updateFFTSources();
+        performFFT();
+    }
 
-        const sorted = [...spectrum].sort((a,b) => b.y - a.y).slice(0, 10);
-        const tbody = document.getElementById('peak-tbody');
-        tbody.innerHTML = "";
-        sorted.forEach((p, i) => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `<td>${i+1}</td><td>${p.x.toFixed(3)}</td><td>${p.y.toExponential(3)}</td>`;
-            tr.onclick = () => highlightBar(p.x);
-            tr.id = `peak-row-${p.x.toFixed(3).replace('.','_')}`;
-            tbody.appendChild(tr);
-        });
-        
-        const ctx = document.getElementById('fftChart').getContext('2d');
-        if(fftChart) fftChart.destroy();
-        
-        const labels = spectrum.map(s => s.x.toFixed(1));
-        const mags = spectrum.map(s => s.y);
+    let myChart=null;
+    function drawChart(times, vData, iData, N, map, scale, unitStr) {
+        const ctx=document.getElementById('myChart').getContext('2d');
+        if(myChart) myChart.destroy();
+        const labels=times.map(t=>(t/scale).toFixed(3));
+        const sets=[]; const cols=['#e03131','#1971c2','#2f9e44','#f08c00','#9c36b5'];
+        const invMap = {}; Object.keys(map).forEach(k => { if(map[k] >= 0) invMap[map[k]] = k; });
 
-        fftChart = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Magnitude',
-                    data: mags,
-                    backgroundColor: (ctx) => {
-                        const idx = ctx.dataIndex;
-                        const labelFreq = ctx.chart.data.labels[idx];
-                        return selectedFreq === labelFreq ? '#e03131' : '#862e9c';
-                    },
-                    barPercentage: 1.0, categoryPercentage: 1.0
-                }]
-            },
-            options: {
-                responsive: true, maintainAspectRatio: false,
-                scales: {
-                    x: { title: { display: true, text: 'Freq (Hz)' }, ticks: { maxTicksLimit: 10 } },
-                    y: { title: { display: true, text: 'Mag' } }
-                },
-                onClick: (e, els) => {
-                    if(els.length > 0) {
-                        const idx = els[0].index;
-                        const freq = labels[idx];
-                        highlightBar(freq);
-                    }
-                },
-                plugins: {
-                    tooltip: { callbacks: { label: (ctx) => `Mag: ${ctx.raw.toExponential(3)}` } },
-                    legend: { display: false }
-                }
-            }
-        });
-    }
+        for(let i=0;i<N;i++){
+            sets.push({ label:`V(N${invMap[i]})`, data:vData[i], borderColor:cols[i%cols.length], borderWidth:2, pointRadius:0, yAxisID: 'y' });
+        }
+        components.forEach((c, idx) => {
+            const hidden = !(c.type.includes('V') || c.type==='L' || c.type==='I_AC');
+            sets.push({ label:`I(${c.name})`, data:iData[idx], borderColor: '#868e96', borderWidth:1.5, borderDash: [5, 5], pointRadius:0, hidden: true, yAxisID: 'y' });
+        });
 
-    let selectedFreq = null;
-    function highlightBar(freq) {
-        selectedFreq = typeof freq === 'number' ? freq.toFixed(1) : freq;
-        if(fftChart) fftChart.update();
-        document.querySelectorAll('.peak-table tr').forEach(tr => tr.classList.remove('peak-row-active'));
-        const rowId = `peak-row-${selectedFreq.replace('.','_')}`;
-        const row = document.getElementById(rowId);
-        if(row) {
-            row.classList.add('peak-row-active');
-            row.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-    }
+        const yMax=document.getElementById('yMax').value;
+        myChart=new Chart(ctx,{
+            type:'line',data:{labels,datasets:sets},
+            options:{
+                responsive:true,maintainAspectRatio:false,animation:false,
+                scales:{ x:{title:{display:true,text:`Time (${unitStr})`},ticks:{maxTicksLimit:8}}, y:{min:yMax?-yMax:undefined,max:yMax?yMax:undefined, title:{display:true, text:'Voltage (V) / Current (A)'}} },
+                plugins: { legend: { labels: { usePointStyle: true, boxWidth: 6 } } }
+            }
+        });
+    }
 
-    function exportData(){
-        if(!myChart)return alert('No Data');
-        let c="Time"; myChart.data.datasets.forEach(d=>c+=`,${d.label}`); c+="\n";
-        for(let i=0;i<myChart.data.labels.length;i++){c+=myChart.data.labels[i]; myChart.data.datasets.forEach(d=>c+=`,${d.data[i]}`); c+="\n";}
-        const b=new Blob([c],{type:'text/csv'}); const u=URL.createObjectURL(b); const a=document.createElement('a'); a.href=u; a.download='sim.csv'; a.click();
-    }
-// [1] 새로운 함수 추가: 현재 부품들의 번호를 스캔하여 카운터 강제 동기화
-    function refreshIdCounters() {
-        // 1. 카운터 초기화
-        idCnt = {R:0, L:0, C:0, V:0, T:0, I:0};
+    let fftChart = null;
 
-        // 2. 현재 화면에 있는 모든 부품 순회
-        components.forEach(c => {
-            // 이름에서 첫 글자(알파벳)와 뒷 숫자 분리 (예: R12 -> cat='R', num=12)
-            const match = c.name.match(/^([a-zA-Z]+)(\d+)$/);
-            if (match) {
-                const prefix = match[1]; // R, L, C, V, I, T
-                const num = parseInt(match[2], 10);
-                
-                // 카테고리 매핑 (V_DC, V_AC 등은 V로 시작하므로 자동으로 V로 잡힘)
-                // 하지만 코드상 idCnt 키는 R, L, C, V, T, I 로 관리됨.
-                // 따라서 prefix가 idCnt의 키에 있는지 확인
-                let catKey = prefix;
-                
-                // 만약 prefix가 idCnt에 없다면 (예: V_AC 등 복잡한 경우 대비) 기존 spawn 로직 활용
-                if (idCnt[catKey] === undefined) {
-                     if (c.type.includes('V')) catKey = 'V';
-                     else if (c.type.includes('I')) catKey = 'I';
-                     else catKey = c.type.charAt(0);
-                }
+    function updateFFTSources() {
+        const sel = document.getElementById('fft-src');
+        sel.innerHTML = "";
+        if(!lastSimResult) return;
+        const { map, N } = lastSimResult;
+        const invMap = {}; Object.keys(map).forEach(k => { if(map[k] >= 0) invMap[map[k]] = k; });
 
-                // 해당 카테고리의 카운터가 현재 부품 번호보다 작으면 업데이트
-                if (idCnt[catKey] !== undefined && idCnt[catKey] < num) {
-                    idCnt[catKey] = num;
-                }
-            }
-        });
-        console.log("ID Counters Refreshed:", idCnt); // 디버깅용 로그
-    }
-   
- function saveCircuit(){ if(components.length===0) return alert("Empty"); const data = {railCount,groundRails:Array.from(groundRails),components:components.map(c=>({name:c.name,type:c.type,val:c.val,freq:c.freq,phase:c.phase,unit:c.unit,nL:c.nL,nR:c.nR,ratio:c.ratio,uiX:c.group.x(),uiY:c.group.y()}))}; const b=new Blob([JSON.stringify(data)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='circuit.json'; a.click(); }
-    // [2] loadCircuit 함수 수정: 로드 완료 후 refreshIdCounters 호출
-    function loadCircuit(input){ 
-        const f=input.files[0]; 
-        if(!f) return; 
-        const r=new FileReader(); 
-        r.onload=(e)=>{
-            try{
-                const d=JSON.parse(e.target.result); 
-                
-                // 1. 초기화
-                resetAll(); 
-                
-                // 2. 설정 및 부품 생성
-                railCount=d.railCount||6; 
-                groundRails=new Set(d.groundRails||[1]); 
-                d.components.forEach(c=>spawn(c.type,c)); 
-                
-                // 3. [핵심] 모든 부품이 로드된 후, 카운터 재설정 함수 호출
-                refreshIdCounters();
+        for(let i=0; i<N; i++) {
+            const opt = document.createElement('option');
+            opt.value = `v:${i}`; opt.text = `V(N${invMap[i]})`;
+            sel.appendChild(opt);
+        }
+        components.forEach((c, idx) => {
+            const opt = document.createElement('option');
+            opt.value = `i:${idx}`; opt.text = `I(${c.name})`;
+            if(c.type.includes('V') || c.type === 'L') sel.appendChild(opt); 
+        });
+    }
 
-                drawGrid();
-            }catch(err){
-                console.error(err);
-                alert("Err");
-            }
-        }; 
-        r.readAsText(f); 
-        input.value=''; 
-    }
-    function resetAll(){ 
-        components.forEach(c=>{c.group.destroy();c.lineL.destroy();c.lineR.destroy();}); 
-        components=[]; idCnt={R:0,L:0,C:0,V:0,T:0,I:0}; railCount=6; groundRails=new Set([1]); drawGrid(); 
-        document.getElementById('res-content').innerHTML = `<div style="color:#888;font-size:11px;text-align:center;padding-top:40px;">${texts[curLang].resPlaceholder}</div>`; 
-        if(myChart){myChart.destroy();myChart=null;} 
-        lastSimResult = null; steadyResults = null; customFormulas = [];
-        document.getElementById('fft-src').innerHTML = "";
-        if(fftChart) fftChart.clear();
-        document.getElementById('peak-tbody').innerHTML = "";
-        document.getElementById('fft-placeholder').style.display = 'block';
-    }
+    function performFFT() {
+        const placeholder = document.getElementById('fft-placeholder');
+        if(!lastSimResult) {
+            placeholder.style.display = 'block';
+            if(fftChart) fftChart.clear();
+            return;
+        }
+        placeholder.style.display = 'none';
 
-    updateText();
-  
+        const { dt, resV, resI } = lastSimResult;
+        const val = document.getElementById('fft-src').value;
+        if(!val) return; 
+        
+        let fMin = parseFloat(document.getElementById('fft-min').value);
+        let fMax = parseFloat(document.getElementById('fft-max').value);
+        if(isNaN(fMin) || fMin < 0) fMin = 0;
+        if(isNaN(fMax) || fMax <= fMin) fMax = fMin + 1000;
+
+        const [type, idxStr] = val.split(':');
+        const idx = parseInt(idxStr);
+        const data = (type === 'v') ? resV[idx] : resI[idx];
+        
+        let spectrum = SimpleFFT.calculateSpectrum(data, dt);
+        spectrum = spectrum.filter(s => s.x >= fMin && s.x <= fMax);
+
+        const sorted = [...spectrum].sort((a,b) => b.y - a.y).slice(0, 10);
+        const tbody = document.getElementById('peak-tbody');
+        tbody.innerHTML = "";
+        sorted.forEach((p, i) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td>${i+1}</td><td>${p.x.toFixed(3)}</td><td>${p.y.toExponential(3)}</td>`;
+            tr.onclick = () => highlightBar(p.x);
+            tr.id = `peak-row-${p.x.toFixed(3).replace('.','_')}`;
+            tbody.appendChild(tr);
+        });
+        
+        const ctx = document.getElementById('fftChart').getContext('2d');
+        if(fftChart) fftChart.destroy();
+        
+        const labels = spectrum.map(s => s.x.toFixed(1));
+        const mags = spectrum.map(s => s.y);
+
+        fftChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Magnitude',
+                    data: mags,
+                    backgroundColor: (ctx) => {
+                        const idx = ctx.dataIndex;
+                        const labelFreq = ctx.chart.data.labels[idx];
+                        return selectedFreq === labelFreq ? '#e03131' : '#862e9c';
+                    },
+                    barPercentage: 1.0, categoryPercentage: 1.0
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                scales: {
+                    x: { title: { display: true, text: 'Freq (Hz)' }, ticks: { maxTicksLimit: 10 } },
+                    y: { title: { display: true, text: 'Mag' } }
+                },
+                onClick: (e, els) => {
+                    if(els.length > 0) {
+                        const idx = els[0].index;
+                        const freq = labels[idx];
+                        highlightBar(freq);
+                    }
+                },
+                plugins: {
+                    tooltip: { callbacks: { label: (ctx) => `Mag: ${ctx.raw.toExponential(3)}` } },
+                    legend: { display: false }
+                }
+            }
+        });
+    }
+
+    let selectedFreq = null;
+    function highlightBar(freq) {
+        selectedFreq = typeof freq === 'number' ? freq.toFixed(1) : freq;
+        if(fftChart) fftChart.update();
+        document.querySelectorAll('.peak-table tr').forEach(tr => tr.classList.remove('peak-row-active'));
+        const rowId = `peak-row-${selectedFreq.replace('.','_')}`;
+        const row = document.getElementById(rowId);
+        if(row) {
+            row.classList.add('peak-row-active');
+            row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }
+
+    function exportData(){
+        if(!myChart)return alert('No Data');
+        let c="Time"; myChart.data.datasets.forEach(d=>c+=`,${d.label}`); c+="\n";
+        for(let i=0;i<myChart.data.labels.length;i++){c+=myChart.data.labels[i]; myChart.data.datasets.forEach(d=>c+=`,${d.data[i]}`); c+="\n";}
+        const b=new Blob([c],{type:'text/csv'}); const u=URL.createObjectURL(b); const a=document.createElement('a'); a.href=u; a.download='sim.csv'; a.click();
+    }
+
+    function refreshIdCounters() {
+        idCnt = {R:0, L:0, C:0, V:0, T:0, I:0};
+        components.forEach(c => {
+            const match = c.name.match(/^([a-zA-Z]+)(\d+)$/);
+            if (match) {
+                const prefix = match[1];
+                const num = parseInt(match[2], 10);
+                let catKey = prefix;
+                if (idCnt[catKey] === undefined) {
+                     if (c.type.includes('V')) catKey = 'V';
+                     else if (c.type.includes('I')) catKey = 'I';
+                     else catKey = c.type.charAt(0);
+                }
+                if (idCnt[catKey] !== undefined && idCnt[catKey] < num) {
+                    idCnt[catKey] = num;
+                }
+            }
+        });
+    }
+
+    function saveCircuit(){ 
+        if(components.length===0) return alert("Empty"); 
+        const data = {railCount,groundRails:Array.from(groundRails),components:components.map(c=>({name:c.name,type:c.type,val:c.val,freq:c.freq,phase:c.phase,unit:c.unit,nL:c.nL,nR:c.nR,ratio:c.ratio,uiX:c.group.x(),uiY:c.group.y()}))}; 
+        const b=new Blob([JSON.stringify(data)],{type:'application/json'}); 
+        const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='circuit.json'; a.click(); 
+    }
+
+    function loadCircuit(input){ 
+        const f=input.files[0]; 
+        if(!f) return; 
+        const r=new FileReader(); 
+        r.onload=(e)=>{
+            try{
+                const d=JSON.parse(e.target.result); 
+                resetAll(); 
+                railCount=d.railCount||6; 
+                groundRails=new Set(d.groundRails||[1]); 
+                d.components.forEach(c=>spawn(c.type,c)); 
+                refreshIdCounters();
+                drawGrid();
+            }catch(err){ console.error(err); alert("Err"); }
+        }; 
+        r.readAsText(f); 
+        input.value=''; 
+    }
+
+    function resetAll(){ 
+        components.forEach(c=>{c.group.destroy();c.lineL.destroy();c.lineR.destroy();}); 
+        components=[]; idCnt={R:0,L:0,C:0,V:0,T:0,I:0}; railCount=6; groundRails=new Set([1]); drawGrid(); 
+        document.getElementById('res-content').innerHTML = `<div style="color:#888;font-size:11px;text-align:center;padding-top:40px;">${texts[curLang].resPlaceholder}</div>`; 
+        if(myChart){myChart.destroy();myChart=null;} 
+        lastSimResult = null; steadyResults = null; customFormulas = [];
+        document.getElementById('fft-src').innerHTML = "";
+        if(fftChart) fftChart.clear();
+        document.getElementById('peak-tbody').innerHTML = "";
+        document.getElementById('fft-placeholder').style.display = 'block';
+    }
+
+    updateText();
+  
 </script>
 </body>
-</html>  
+</html>
