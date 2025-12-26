@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Online Circuit Simulator (Fixed & Replies)</title>
+    <title>Online Circuit Simulator (Responsive Header)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
     <script src="https://unpkg.com/konva@9.2.0/konva.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -15,9 +15,9 @@
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-thumb { background: #adb5bd; border-radius: 4px; }
         
-        /* HEADER */
-        #main-header { height: 50px; background: #343a40; color: white; display: flex; align-items: center; padding: 0 20px; flex-shrink: 0; position: relative; z-index: 100; }
-        #app-title { font-size: 18px; font-weight: bold; position: absolute; left: 50%; transform: translateX(-50%); }
+        /* HEADER (Desktop Default) */
+        #main-header { height: 50px; background: #343a40; color: white; display: flex; align-items: center; padding: 0 20px; flex-shrink: 0; position: relative; z-index: 100; transition: height 0.3s; }
+        #app-title { font-size: 18px; font-weight: bold; position: absolute; left: 50%; transform: translateX(-50%); white-space: nowrap; }
         .header-btns { position: absolute; right: 20px; display: flex; gap: 10px; }
         .header-btn { background: #495057; color: white; border: 1px solid #adb5bd; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; }
         .header-btn:hover { background: #6c757d; }
@@ -27,7 +27,6 @@
         #app { display: flex; flex: 1; width: 100vw; overflow: hidden; }
         .pane { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
         
-        /* [수정됨] position: relative 추가하여 툴바 위치 기준점 잡기 */
         #left-pane { border-right: 4px solid #dee2e6; flex: 1.2; position: relative; } 
         #right-pane { flex: 1; display: flex; flex-direction: column; }
         
@@ -49,10 +48,10 @@
         #graph-section { height: 50%; display: flex; flex-direction: column; border-bottom: 4px solid #dee2e6; padding: 10px; background: #fff; position: relative; min-height: 0; }
         #fft-section { height: 50%; display: flex; flex-direction: column; background: #fff; overflow: hidden; position: relative; padding: 10px; }
 
-        /* TOOLBAR [위치 수정됨] */
+        /* TOOLBAR */
         #toolbar { 
             position: absolute; 
-            top: 15px; left: 15px; /* 이제 left-pane 기준 15px임 */
+            top: 15px; left: 15px; 
             width: 140px; 
             background: rgba(255,255,255,0.95); 
             padding: 10px; 
@@ -71,7 +70,7 @@
         .btn-util { background: #868e96; color: white; border: none; justify-content: center; font-weight: bold; }
         .badge { display: inline-block; width: 18px; text-align: center; margin-right: 5px; font-weight: 800; font-size: 10px; }
 
-        /* Other UI */
+        /* Graph Controls */
         #graph-controls { padding: 5px; background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 6px; margin-bottom: 5px; }
         .ctrl-row { display: flex; gap: 5px; align-items: center; margin-bottom: 2px; flex-wrap: wrap; }
         .ctrl-label { font-size: 11px; font-weight: 700; color: #555; width: 60px; }
@@ -99,48 +98,26 @@
         #guide-body ul { padding-left: 20px; margin: 0; }
         #guide-body li { margin-bottom: 6px; }
 
-        /* GUESTBOOK (Updated for Replies) */
+        /* GUESTBOOK */
         #guest-list-area { flex: 1; overflow-y: auto; padding: 10px; background: #f8f9fa; }
         #guest-input-area { padding: 10px; background: #fff; border-top: 1px solid #dee2e6; display: flex; flex-direction: column; gap: 6px; }
         
-        .guest-msg { 
-    background: white; 
-    border: 1px solid #e9ecef; 
-    border-radius: 6px; 
-    padding: 8px; 
-    margin-bottom: 8px; 
-    position: relative; 
-}
-        
-        .guest-reply { margin-left: 20px; border-left: 3px solid #dee2e6; background: #fdfdfd; margin-top: 5px; } /* 답글 스타일 */
-        /* [추가됨] 답글을 감싸는 컨테이너 (자동 들여쓰기 역할) */
-.reply-container {
-    margin-left: 20px; /* 여기서 들여쓰기 간격 조절 */
-    border-left: 2px solid #f1f3f5; /* 계층 관계를 보여주는 선 */
-    padding-left: 5px;
-}
+        .guest-msg { background: white; border: 1px solid #e9ecef; border-radius: 6px; padding: 8px; margin-bottom: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); position: relative; }
+        .guest-reply { margin-left: 20px; border-left: 2px solid #adb5bd; background: #fdfdfd; margin-top: 5px; }
+        .reply-container { margin-left: 15px; border-left: 2px solid #e9ecef; padding-left: 5px; }
 
-/* 모바일에서는 너무 깊어지면 곤란하므로 간격 줄임 */
-@media screen and (max-width: 768px) {
-    .reply-container { margin-left: 10px; }
-}
         .guest-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
         .guest-user { font-weight: bold; color: #228be6; font-size: 11px; }
         .guest-time { font-size: 9px; color: #adb5bd; }
         .guest-txt { font-size: 12px; color: #495057; word-break: break-all; margin-bottom: 4px; }
-        
         .btn-reply-txt { font-size: 10px; color: #868e96; cursor: pointer; text-decoration: underline; border:none; background:none; padding:0; }
         .btn-reply-txt:hover { color: #339af0; }
-
         .guest-inp { padding: 8px; border: 1px solid #ced4da; border-radius: 4px; font-size: 12px; width: 100%; }
         .guest-inp:focus { outline: none; border-color: #228be6; }
-        
-        /* 답글 작성 중 표시 */
         #reply-indicator { display: none; background: #e7f5ff; color: #1c7ed6; font-size: 11px; padding: 5px; border-radius: 4px; align-items: center; justify-content: space-between; }
-        #reply-indicator span { font-weight: bold; }
         #btn-cancel-reply { cursor: pointer; font-weight: bold; border:none; background:none; color:#1c7ed6; }
 
-        /* FFT & Peaks */
+        /* FFT Controls */
         #fft-controls { display:flex; gap:5px; align-items:center; font-size:11px; margin-bottom: 5px; flex-wrap: wrap; background: #f1f3f5; padding: 5px; border-radius: 5px;}
         #fft-chart-area { flex:1; position:relative; min-height:0; border-bottom:1px solid #eee; margin-bottom:5px;}
         #fft-peaks-area { height: 120px; overflow-y:auto; font-size:11px; border: 1px solid #dee2e6; }
@@ -150,19 +127,49 @@
         .peak-table tr:hover { background:#f1f3f5; cursor:pointer; }
         .peak-row-active { background:#ffec99 !important; font-weight:bold; }
 
-    /* --- MOBILE RESPONSIVE STYLES --- */
+    /* --- MOBILE RESPONSIVE STYLES (Fix for overlapping header) --- */
     @media screen and (max-width: 768px) {
+        /* 1. Header Layout Change */
+        #main-header {
+            height: auto; /* Allow header to grow */
+            flex-direction: column; /* Stack items vertically */
+            padding: 10px; /* Add space around */
+            justify-content: center;
+        }
+
+        /* 2. Title Position */
+        #app-title {
+            position: static; /* Remove absolute positioning */
+            transform: none; /* Remove centering transform */
+            margin-bottom: 10px; /* Space below title */
+            text-align: center;
+        }
+
+        /* 3. Buttons Position */
+        .header-btns {
+            position: static; /* Remove absolute positioning */
+            width: 100%;
+            justify-content: center; /* Center buttons */
+        }
+
+        /* 4. App Layout */
         #app { flex-direction: column; height: 100vh; overflow-y: auto; }
         .pane { width: 100%; flex: none; }
+        
         #left-pane { height: 55vh; border-right: none; border-bottom: 4px solid #dee2e6; display: flex; flex-direction: column; }
         #right-pane { height: 45vh; display: flex; flex-direction: column; }
-        #container { height: 65% !important; } 
-        #result-panel { height: 35% !important; }
-        #graph-section { height: 60% !important; }
-        #fft-section { height: 40% !important; }
         
-        #guest-pane { position: fixed; top: 50px; right: 0; bottom: 0; z-index: 90; box-shadow: -5px 0 15px rgba(0,0,0,0.1); }
-        
+        /* 5. Guestbook Mobile Drawer (Full Screen or Overlay) */
+        #guest-pane { 
+            position: fixed; 
+            top: 0; right: 0; bottom: 0; left: 0; /* Cover full screen */
+            width: 100%; /* Full width */
+            z-index: 200; /* Above everything */
+            box-shadow: none;
+        }
+        #guest-pane.closed { width: 0; left: 100%; } /* Slide out */
+
+        /* Misc Mobile Adjustments */
         #toolbar { top: 5px; left: 5px; width: 110px; padding: 5px; max-height: 60vh; overflow-y: auto; }
         .tool-tit { font-size: 9px; }
         .btn { font-size: 10px; padding: 4px; }
@@ -302,9 +309,12 @@
     </div>
 
     <div id="guest-pane" class="closed">
-        <div class="panel-header">
+        <div class="panel-header" style="justify-content:space-between;">
             <span>📝 Guestbook</span>
-            <button class="btn-util" style="width:auto; padding:2px 6px;" onclick="loadMessages()">🔄</button>
+            <div>
+                <button class="btn-util" style="width:auto; padding:2px 6px;" onclick="loadMessages()">🔄</button>
+                <button class="btn-util" style="width:auto; padding:2px 6px; color:#fa5252;" onclick="toggleGuestSidebar()">✕</button>
+            </div>
         </div>
         <div id="guest-list-area">Loading...</div>
         <div id="guest-input-area">
@@ -339,7 +349,7 @@
     // --- SIDEBAR & REPLY LOGIC ---
     const guestPane = document.getElementById("guest-pane");
     const guestBtn = document.getElementById("guest-btn");
-    let replyingTo = null; // Stores { id: 123, name: "User" }
+    let replyingTo = null; 
 
     function toggleGuestSidebar() {
         if(!supabaseClient) {
@@ -359,7 +369,6 @@
         setTimeout(() => { window.dispatchEvent(new Event('resize')); }, 350); 
     }
 
-    // 답글 모드 설정
     function setReply(id, name) {
         replyingTo = { id, name };
         document.getElementById("reply-target-name").innerText = name;
@@ -367,23 +376,20 @@
         document.getElementById("g-msg").focus();
     }
 
-    // 답글 모드 취소
     function cancelReply() {
         replyingTo = null;
         document.getElementById("reply-indicator").style.display = 'none';
     }
 
-    // [완전 교체] 메시지 목록 불러오기 (트리 구조 변환)
     async function loadMessages() {
         const listDiv = document.getElementById("guest-list-area");
         listDiv.innerHTML = '<div style="text-align:center; padding:10px; color:#999;">Loading...</div>';
         
         try {
-            // 1. 데이터 가져오기 (충분히 많이)
             const { data, error } = await supabaseClient
                 .from('circuitsim')
                 .select('*')
-                .order('created_at', { ascending: true }) // 날짜 오름차순 (과거->현재)
+                .order('created_at', { ascending: true }) 
                 .limit(500); 
             
             if(error) throw error;
@@ -394,26 +400,22 @@
                  return;
             }
 
-            // 2. 데이터를 트리 구조로 변환 (ID 매핑)
             const msgMap = {};
             data.forEach(msg => { 
-                msg.children = []; // 자식들을 담을 배열 추가
+                msg.children = [];
                 msgMap[msg.id] = msg; 
             });
 
-            const roots = []; // 최상위 글(원글)들
+            const roots = []; 
 
             data.forEach(msg => {
                 if (msg.parent_id && msgMap[msg.parent_id]) {
-                    // 부모가 있으면 부모의 children 배열에 넣음 (답글)
                     msgMap[msg.parent_id].children.push(msg);
                 } else {
-                    // 부모가 없거나 찾을 수 없으면 최상위 글로 취급
                     roots.push(msg);
                 }
             });
 
-            // 3. 최신순 정렬 후 렌더링 (원글은 최신이 위로)
             roots.reverse().forEach(rootMsg => {
                 listDiv.appendChild(renderMessageRecursive(rootMsg));
             });
@@ -424,15 +426,12 @@
         }
     }
 
-    // [추가됨] 재귀적으로 메시지와 답글을 그리는 함수
     function renderMessageRecursive(msg) {
-        // 1. 현재 메시지 요소 생성
         const msgDiv = document.createElement('div');
         msgDiv.className = 'guest-msg';
         
         const d = new Date(msg.created_at).toLocaleString();
         
-        // HTML 구성
         let html = `
             <div class="guest-header">
                 <span class="guest-user">${escapeHtml(msg.name)}</span>
@@ -441,25 +440,19 @@
             <div class="guest-txt">${escapeHtml(msg.message)}</div>
         `;
         
-        // 답글 달기 버튼 (어떤 깊이에서도 가능)
-        // 이름에 따옴표가 있을 경우를 대비해 replace 처리
         const safeName = escapeHtml(msg.name).replace(/'/g, "\\'");
         html += `<button class="btn-reply-txt" onclick="setReply(${msg.id}, '${safeName}')">↳ Reply</button>`;
         
         msgDiv.innerHTML = html;
 
-        // 2. 자식(답글)이 있다면 처리
         if (msg.children && msg.children.length > 0) {
             const replyContainer = document.createElement('div');
-            replyContainer.className = 'reply-container'; // CSS에서 들여쓰기 적용됨
+            replyContainer.className = 'reply-container';
             
-            // 자식들을 생성하여 컨테이너에 넣음 (재귀 호출)
             msg.children.forEach(childMsg => {
                 replyContainer.appendChild(renderMessageRecursive(childMsg));
             });
             
-            // 현재 메시지 박스 바로 뒤에 답글 컨테이너를 붙일지, 안에 넣을지 결정
-            // 여기서는 시각적 구분을 위해 별도 컨테이너로 감싸서 반환
             const wrapper = document.createElement('div');
             wrapper.appendChild(msgDiv);
             wrapper.appendChild(replyContainer);
@@ -467,28 +460,6 @@
         }
 
         return msgDiv;
-    }
-
-    function createMsgElement(msg, isReply = false) {
-        const d = new Date(msg.created_at).toLocaleString();
-        const div = document.createElement('div');
-        div.className = isReply ? 'guest-msg guest-reply' : 'guest-msg';
-        
-        let html = `
-            <div class="guest-header">
-                <span class="guest-user">${escapeHtml(msg.name)}</span>
-                <span class="guest-time">${d}</span>
-            </div>
-            <div class="guest-txt">${escapeHtml(msg.message)}</div>
-        `;
-        
-        // 답글이 아니면 'Reply' 버튼 표시
-        if (!isReply) {
-            html += `<button class="btn-reply-txt" onclick="setReply(${msg.id}, '${escapeHtml(msg.name).replace(/'/g, "\\'")}')">↳ Reply</button>`;
-        }
-        
-        div.innerHTML = html;
-        return div;
     }
 
     async function postMessage() {
@@ -511,7 +482,7 @@
             if(error) throw error;
             
             msgInp.value = '';
-            cancelReply(); // 답글 모드 초기화
+            cancelReply();
             loadMessages();
         } catch(e) {
             alert("Failed to send.");
