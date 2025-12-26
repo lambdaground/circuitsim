@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Online Circuit Simulator</title>
+    <title>Online Circuit Simulator (Fixed & Replies)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
     <script src="https://unpkg.com/konva@9.2.0/konva.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -21,50 +21,47 @@
         .header-btns { position: absolute; right: 20px; display: flex; gap: 10px; }
         .header-btn { background: #495057; color: white; border: 1px solid #adb5bd; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; }
         .header-btn:hover { background: #6c757d; }
-        .header-btn.active { background: #228be6; border-color: #228be6; } /* 활성화 상태 스타일 */
+        .header-btn.active { background: #228be6; border-color: #228be6; }
 
-        /* LAYOUT (3-Column Grid) */
+        /* LAYOUT */
         #app { display: flex; flex: 1; width: 100vw; overflow: hidden; }
-        .pane { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; } /* min-width:0 is crucial for flex charts */
+        .pane { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
         
-        #left-pane { border-right: 4px solid #dee2e6; flex: 1.2; } /* 회로 영역을 조금 더 넓게 */
+        /* [수정됨] position: relative 추가하여 툴바 위치 기준점 잡기 */
+        #left-pane { border-right: 4px solid #dee2e6; flex: 1.2; position: relative; } 
         #right-pane { flex: 1; display: flex; flex-direction: column; }
         
-        /* New Guestbook Sidebar */
+        /* SIDEBAR */
         #guest-pane { 
-            width: 300px; 
+            width: 320px; 
             background: #fff; 
             border-left: 4px solid #dee2e6; 
             display: flex; 
             flex-direction: column; 
-            transition: width 0.3s ease, padding 0.3s ease; /* 부드러운 열림/닫힘 효과 */
+            transition: width 0.3s ease;
             overflow: hidden;
             flex-shrink: 0;
         }
         #guest-pane.closed { width: 0; border-left: none; }
 
-        /* Internal Sections */
         #container { height: 50%; width: 100%; min-height: 0; background: #f1f3f5; border-bottom: 4px solid #dee2e6; position: relative; }
         #result-panel { height: 50%; background: white; padding: 0; overflow: hidden; display: flex; flex-direction: column; }
-
         #graph-section { height: 50%; display: flex; flex-direction: column; border-bottom: 4px solid #dee2e6; padding: 10px; background: #fff; position: relative; min-height: 0; }
         #fft-section { height: 50%; display: flex; flex-direction: column; background: #fff; overflow: hidden; position: relative; padding: 10px; }
 
-        /* CONTROLS & UI Elements */
-        #graph-controls { padding: 5px; background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 6px; margin-bottom: 5px; }
-        .ctrl-row { display: flex; gap: 5px; align-items: center; margin-bottom: 2px; flex-wrap: wrap; }
-        .ctrl-label { font-size: 11px; font-weight: 700; color: #555; width: 60px; }
-        .inp { padding: 3px; border: 1px solid #ced4da; border-radius: 3px; font-size: 11px; width: 60px; text-align: center; }
-        .inp-sel { padding: 2px; border: 1px solid #ced4da; border-radius: 3px; font-size: 11px; }
-        #chart-wrapper { flex: 1; position: relative; min-height: 0; }
+        /* TOOLBAR [위치 수정됨] */
+        #toolbar { 
+            position: absolute; 
+            top: 15px; left: 15px; /* 이제 left-pane 기준 15px임 */
+            width: 140px; 
+            background: rgba(255,255,255,0.95); 
+            padding: 10px; 
+            border-radius: 8px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15); 
+            z-index: 10; 
+        }
 
-        #custom-calc-area { padding: 8px; background: #e9ecef; border-bottom: 1px solid #dee2e6; display:flex; gap:5px; align-items:center; }
-        #formula-inp { flex:1; padding:4px; border:1px solid #ced4da; border-radius:3px; font-size:11px; }
-
-        .panel-header { padding: 8px 15px; background: #e9ecef; border-bottom: 1px solid #dee2e6; font-weight: bold; font-size: 13px; color: #495057; display:flex; align-items:center; justify-content: space-between; flex-shrink: 0; }
-        #res-content { flex: 1; padding: 0; overflow-y: auto; }
-
-        #toolbar { position: absolute; top: 15px; left: 15px; width: 140px; background: rgba(255,255,255,0.95); padding: 10px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.15); z-index: 10; }
+        /* Controls Style */
         .tool-sec { margin-bottom: 8px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
         .tool-tit { font-size: 10px; color: #888; font-weight: bold; margin-bottom: 4px; }
         .btn { width: 100%; padding: 5px; margin-bottom: 4px; border: 1px solid #ced4da; background: #fff; border-radius: 4px; cursor: pointer; font-size: 11px; text-align: left; display: flex; align-items: center; transition: 0.1s; }
@@ -74,17 +71,27 @@
         .btn-util { background: #868e96; color: white; border: none; justify-content: center; font-weight: bold; }
         .badge { display: inline-block; width: 18px; text-align: center; margin-right: 5px; font-weight: 800; font-size: 10px; }
 
-        #progress-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.8); display:none; justify-content:center; align-items:center; flex-direction:column; z-index:20; }
-        #p-bar { width:200px; height:6px; background:#ddd; border-radius:3px; margin-top:5px; overflow:hidden; }
-        #p-fill { width:0%; height:100%; background:#228be6; transition:width 0.1s; }
-        
+        /* Other UI */
+        #graph-controls { padding: 5px; background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 6px; margin-bottom: 5px; }
+        .ctrl-row { display: flex; gap: 5px; align-items: center; margin-bottom: 2px; flex-wrap: wrap; }
+        .ctrl-label { font-size: 11px; font-weight: 700; color: #555; width: 60px; }
+        .inp { padding: 3px; border: 1px solid #ced4da; border-radius: 3px; font-size: 11px; width: 60px; text-align: center; }
+        .inp-sel { padding: 2px; border: 1px solid #ced4da; border-radius: 3px; font-size: 11px; }
+        #chart-wrapper { flex: 1; position: relative; min-height: 0; }
+        #custom-calc-area { padding: 8px; background: #e9ecef; border-bottom: 1px solid #dee2e6; display:flex; gap:5px; align-items:center; }
+        #formula-inp { flex:1; padding:4px; border:1px solid #ced4da; border-radius:3px; font-size:11px; }
+        .panel-header { padding: 8px 15px; background: #e9ecef; border-bottom: 1px solid #dee2e6; font-weight: bold; font-size: 13px; color: #495057; display:flex; align-items:center; justify-content: space-between; flex-shrink: 0; }
+        #res-content { flex: 1; padding: 0; overflow-y: auto; }
         .res-table { width: 100%; border-collapse: collapse; font-size: 11px; }
         .res-table th { background: #f1f3f5; padding: 6px; border: 1px solid #dee2e6; text-align: center; position: sticky; top: 0; z-index: 2; }
         .res-table td { padding: 6px; border: 1px solid #dee2e6; text-align: center; }
         .custom-row { background-color: #f3f0ff; color: #5f3dc4; font-weight:bold; }
         .btn-del-row { background:none; border:none; cursor:pointer; color:#fa5252; font-weight:bold; }
+        #progress-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.8); display:none; justify-content:center; align-items:center; flex-direction:column; z-index:20; }
+        #p-bar { width:200px; height:6px; background:#ddd; border-radius:3px; margin-top:5px; overflow:hidden; }
+        #p-fill { width:0%; height:100%; background:#228be6; transition:width 0.1s; }
 
-        /* Guide Modal (Still a modal) */
+        /* Guide Modal */
         .modal { display: none; position: fixed; background: #fff; border: 1px solid #adb5bd; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); z-index: 1000; flex-direction: column; resize: both; overflow: hidden; }
         .modal-header { padding: 10px; background: #343a40; color: white; cursor: move; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
         .modal-body { flex: 1; padding: 15px; overflow-y: auto; font-size: 12px; line-height: 1.6; color: #333; background: #f8f9fa;}
@@ -92,18 +99,30 @@
         #guide-body ul { padding-left: 20px; margin: 0; }
         #guide-body li { margin-bottom: 6px; }
 
-        /* Guestbook Sidebar Styles (Replaced Modal Styles) */
+        /* GUESTBOOK (Updated for Replies) */
         #guest-list-area { flex: 1; overflow-y: auto; padding: 10px; background: #f8f9fa; }
         #guest-input-area { padding: 10px; background: #fff; border-top: 1px solid #dee2e6; display: flex; flex-direction: column; gap: 6px; }
-        .guest-msg { background: white; border: 1px solid #e9ecef; border-radius: 6px; padding: 8px; margin-bottom: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+        
+        .guest-msg { background: white; border: 1px solid #e9ecef; border-radius: 6px; padding: 8px; margin-bottom: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); position: relative; }
+        .guest-reply { margin-left: 20px; border-left: 3px solid #dee2e6; background: #fdfdfd; margin-top: 5px; } /* 답글 스타일 */
+        
         .guest-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
         .guest-user { font-weight: bold; color: #228be6; font-size: 11px; }
         .guest-time { font-size: 9px; color: #adb5bd; }
-        .guest-txt { font-size: 12px; color: #495057; word-break: break-all; }
+        .guest-txt { font-size: 12px; color: #495057; word-break: break-all; margin-bottom: 4px; }
+        
+        .btn-reply-txt { font-size: 10px; color: #868e96; cursor: pointer; text-decoration: underline; border:none; background:none; padding:0; }
+        .btn-reply-txt:hover { color: #339af0; }
+
         .guest-inp { padding: 8px; border: 1px solid #ced4da; border-radius: 4px; font-size: 12px; width: 100%; }
         .guest-inp:focus { outline: none; border-color: #228be6; }
+        
+        /* 답글 작성 중 표시 */
+        #reply-indicator { display: none; background: #e7f5ff; color: #1c7ed6; font-size: 11px; padding: 5px; border-radius: 4px; align-items: center; justify-content: space-between; }
+        #reply-indicator span { font-weight: bold; }
+        #btn-cancel-reply { cursor: pointer; font-weight: bold; border:none; background:none; color:#1c7ed6; }
 
-        /* FFT PANEL */
+        /* FFT & Peaks */
         #fft-controls { display:flex; gap:5px; align-items:center; font-size:11px; margin-bottom: 5px; flex-wrap: wrap; background: #f1f3f5; padding: 5px; border-radius: 5px;}
         #fft-chart-area { flex:1; position:relative; min-height:0; border-bottom:1px solid #eee; margin-bottom:5px;}
         #fft-peaks-area { height: 120px; overflow-y:auto; font-size:11px; border: 1px solid #dee2e6; }
@@ -123,7 +142,7 @@
         #result-panel { height: 35% !important; }
         #graph-section { height: 60% !important; }
         #fft-section { height: 40% !important; }
-        /* Mobile: Guestbook acts as a drawer over content */
+        
         #guest-pane { position: fixed; top: 50px; right: 0; bottom: 0; z-index: 90; box-shadow: -5px 0 15px rgba(0,0,0,0.1); }
         
         #toolbar { top: 5px; left: 5px; width: 110px; padding: 5px; max-height: 60vh; overflow-y: auto; }
@@ -241,7 +260,7 @@
         
         <div id="fft-section">
             <div class="panel-header" style="background:#fff; padding-left:0; border:none; margin-bottom:5px;">
-                <span style="font-weight:bold;">📊 C-2. FFT Spectrum</span>
+                <span style="font-weight:bold;">📊 FFT Spectrum</span>
                 <button class="btn-util" style="font-size:10px; padding:2px 6px; width:auto;" onclick="performFFT()">🔄 Update</button>
             </div>
             <div id="fft-controls">
@@ -271,6 +290,10 @@
         </div>
         <div id="guest-list-area">Loading...</div>
         <div id="guest-input-area">
+            <div id="reply-indicator">
+                <span>Replying to <b id="reply-target-name">...</b></span>
+                <button id="btn-cancel-reply" onclick="cancelReply()">✕</button>
+            </div>
             <input type="text" id="g-name" class="guest-inp" placeholder="Name">
             <input type="text" id="g-msg" class="guest-inp" placeholder="Message" onkeydown="if(event.key==='Enter') postMessage()">
             <button class="btn btn-primary" style="justify-content:center; width:100%;" onclick="postMessage()">Submit</button>
@@ -295,9 +318,10 @@
         }
     } catch(e) { console.error("Supabase Init Error:", e); }
 
-    // --- SIDEBAR TOGGLE ---
+    // --- SIDEBAR & REPLY LOGIC ---
     const guestPane = document.getElementById("guest-pane");
     const guestBtn = document.getElementById("guest-btn");
+    let replyingTo = null; // Stores { id: 123, name: "User" }
 
     function toggleGuestSidebar() {
         if(!supabaseClient) {
@@ -305,32 +329,41 @@
             return;
         }
         
-        // Toggle class
         const isClosed = guestPane.classList.contains('closed');
         if(isClosed) {
             guestPane.classList.remove('closed');
             guestBtn.classList.add('active');
-            loadMessages(); // Load data when opened
+            loadMessages();
         } else {
             guestPane.classList.add('closed');
             guestBtn.classList.remove('active');
         }
-        
-        // Trigger resize event so charts redraw correctly in new width
-        setTimeout(() => {
-            window.dispatchEvent(new Event('resize'));
-        }, 350); 
+        setTimeout(() => { window.dispatchEvent(new Event('resize')); }, 350); 
+    }
+
+    // 답글 모드 설정
+    function setReply(id, name) {
+        replyingTo = { id, name };
+        document.getElementById("reply-target-name").innerText = name;
+        document.getElementById("reply-indicator").style.display = 'flex';
+        document.getElementById("g-msg").focus();
+    }
+
+    // 답글 모드 취소
+    function cancelReply() {
+        replyingTo = null;
+        document.getElementById("reply-indicator").style.display = 'none';
     }
 
     async function loadMessages() {
         const listDiv = document.getElementById("guest-list-area");
         listDiv.innerHTML = '<div style="text-align:center; padding:10px; color:#999;">Loading...</div>';
         try {
+            // parent_id 포함하여 조회
             const { data, error } = await supabaseClient
                 .from('circuitsim')
                 .select('*')
-                .order('created_at', { ascending: false })
-                .limit(50);
+                .order('created_at', { ascending: true }); // 날짜 오름차순으로 가져와서 JS에서 정렬
             
             if(error) throw error;
             
@@ -340,23 +373,45 @@
                  return;
             }
 
-            data.forEach(msg => {
-                const d = new Date(msg.created_at).toLocaleString();
-                const div = document.createElement('div');
-                div.className = 'guest-msg';
-                div.innerHTML = `
-                    <div class="guest-header">
-                        <span class="guest-user">${escapeHtml(msg.name)}</span>
-                        <span class="guest-time">${d}</span>
-                    </div>
-                    <div class="guest-txt">${escapeHtml(msg.message)}</div>
-                `;
-                listDiv.appendChild(div);
+            // 계층형 구조로 렌더링하기 위해 부모/자식 분리
+            const parents = data.filter(m => !m.parent_id).reverse(); // 최신순
+            const replies = data.filter(m => m.parent_id);
+
+            parents.forEach(msg => {
+                listDiv.appendChild(createMsgElement(msg));
+                // 해당 글의 답글 찾기
+                const myReplies = replies.filter(r => r.parent_id === msg.id);
+                myReplies.forEach(reply => {
+                    listDiv.appendChild(createMsgElement(reply, true));
+                });
             });
+
         } catch(e) {
             listDiv.innerHTML = "Error loading messages.";
             console.error(e);
         }
+    }
+
+    function createMsgElement(msg, isReply = false) {
+        const d = new Date(msg.created_at).toLocaleString();
+        const div = document.createElement('div');
+        div.className = isReply ? 'guest-msg guest-reply' : 'guest-msg';
+        
+        let html = `
+            <div class="guest-header">
+                <span class="guest-user">${escapeHtml(msg.name)}</span>
+                <span class="guest-time">${d}</span>
+            </div>
+            <div class="guest-txt">${escapeHtml(msg.message)}</div>
+        `;
+        
+        // 답글이 아니면 'Reply' 버튼 표시
+        if (!isReply) {
+            html += `<button class="btn-reply-txt" onclick="setReply(${msg.id}, '${escapeHtml(msg.name).replace(/'/g, "\\'")}')">↳ Reply</button>`;
+        }
+        
+        div.innerHTML = html;
+        return div;
     }
 
     async function postMessage() {
@@ -367,12 +422,19 @@
         
         if(!nameVal || !msgVal) return alert("Please enter name and message.");
         
+        const payload = { name: nameVal, message: msgVal };
+        if (replyingTo) {
+            payload.parent_id = replyingTo.id;
+        }
+
         try {
             const { error } = await supabaseClient
                 .from('circuitsim')
-                .insert([{ name: nameVal, message: msgVal }]);
+                .insert([payload]);
             if(error) throw error;
+            
             msgInp.value = '';
+            cancelReply(); // 답글 모드 초기화
             loadMessages();
         } catch(e) {
             alert("Failed to send.");
@@ -491,7 +553,7 @@
     let curLang = 'ko'; 
     const texts = {
         ko: {
-            appTitle: "온라인 회로 시뮬레이터", langBtn: "🌐 English",
+            appTitle: "초보자를 위한 온라인 회로 시뮬레이터", langBtn: "🌐 English",
             nav_guestbook: "📝 방명록",
             t_grid: "그리드", t_file: "파일", t_mode: "모드", t_parts: "부품",
             b_save: "💾 저장", b_load: "📂 불러오기", b_steady: "⚡ 정상상태", b_reset: "초기화",
@@ -659,7 +721,7 @@
         else if(type==='T') {
             g.add(l([48, 5, 48, 35], 2)); g.add(l([52, 5, 52, 35], 2));
             g.add(l([0,20, 25,20, 25,10, 35,10], 2)); 
-            g.add(new Konva.Path({ data: "M35,10 c-6,0 -6,6 0,6 c-6,0 -6,6 0,6 c-6,0 -6,6 0,6", stroke: '#333', strokeWidth: 2, lineCap: 'round', lineJoin: 'round' }));
+            g.add(new Konva.Path({ data: "M35,10 c-6,0 -6,6 0,6 c-6,0 -6,6 0,6 c-6,0 -6,6 0,6 c-6,0 -6,6 0,6", stroke: '#333', strokeWidth: 2, lineCap: 'round', lineJoin: 'round' }));
             g.add(l([35,28, 35,32], 2)); g.add(l([28,32, 42,32], 2)); g.add(l([31,35, 39,35], 2)); g.add(l([34,38, 36,38], 2));
             g.add(l([100,20, 75,20, 75,10, 65,10], 2)); 
             g.add(new Konva.Path({ data: "M65,10 c6,0 6,6 0,6 c6,0 6,6 0,6 c6,0 6,6 0,6", stroke: '#333', strokeWidth: 2, lineCap: 'round', lineJoin: 'round' }));
