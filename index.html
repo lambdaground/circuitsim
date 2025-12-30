@@ -653,7 +653,14 @@
         }
         components.forEach(c=>updateComp(c)); layer.draw();
     }
-    function updateRailCount(d){let n=railCount+d;if(n<2||n>MAX_RAILS)return;railCount=n;drawGrid();}
+    function updateRailCount(d) {
+    let n = railCount + d;
+    if (n < 2 || n > 30) return;
+    railCount = n;
+    drawGrid();
+    updateAllWires(); // [추가] 소자들의 위치와 크기를 새 그리드에 맞춰 갱신
+    pushHistory();
+}
 
     let components=[], idCnt={R:0,L:0,C:0,V:0,T:0,I:0};
     function spawn(type, params=null){ 
