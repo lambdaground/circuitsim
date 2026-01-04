@@ -925,34 +925,97 @@
             } catch(e){ console.error(e); break; }
         }
         pOv.style.display='none';
-        lastSimResult = { dt, resV, resI, N, map };
+        lastSimResult = { dt, resV, resI, N, map, timeLog }; // <-- [수정] timeLog 추가 필수!
         drawTransientChart(timeLog, resV, N, map);
         updateFFTSources();
     }
 
     function drawTransientChart(times, vData, N, map) {
-        const ctx=document.getElementById('transientChart').getContext('2d');
+        const ctx = document.getElementById('transientChart').getContext('2d');
         if(myChart) myChart.destroy();
-        const stride = Math.ceil(times.length / 1000);
+
+        // 데이터가 너무 많으면 다운샘플링 (성능 최적화)
+        const stride = Math.ceil(times.length / 1000); 
         const labels = times.filter((_,i)=>i%stride===0).map(t=>(t*1000).toFixed(2) + 'ms');
-        const sets=[]; const cols=['#e03131','#1971c2','#2f9e44','#f08c00','#9c36b5'];
-        const invMap = {}; Object.keys(map).forEach(k => { if(map[k] >= 0) invMap[map[k]] = k; });
-        for(let i=0;i<N;i++){
-            const data = vData[i].filter((_,j)=>j%stride===0);
-            sets.push({ label:`V(Node ${invMap[i]})`, data:data, borderColor:cols[i%cols.length], borderWidth:1.5, pointRadius:0 });
-        }
+        
+        const sets = [];
+        
+        // [수정] activeProbes가 비어있으면 안내 메시지용 빈 그래프 혹은 모든 노드 그리기?
+        // 여기서는 비어있으면 "Add probes to see graph" 상태가 되도록 빈 상태로 둡니다.
+        // 만약 비어있을 때 예전처럼 다 보여주려면 if(activeProbes.length===0) { ...기존 로직... } 사용.
+        
+        activeProbes.forEach(p => {
+            let rawData = [];
+            
+            if (p.type === 'V') {
+                // 전압: Node ID -> Matrix Index 변환 필요
+                // map[RailID] = MatrixIndex. (GND는 -1)
+                const nodeIdx = map[p.target];
+                if (nodeIdx === -1) {
+                    // GND
+                    rawData = new Array(vData[0].length).fill(0);
+                } else if (nodeIdx !== undefined) {
+                    rawData = vData[nodeIdx];
+                }
+            } else if (p.type === 'I') {
+                // 전류: Component Name -> Component Index 찾기
+                // lastSimResult.resI는 components 배열 순서와 같음.
+                // components 배열 순서가 시뮬레이션 중간에 바뀌지 않았다고 가정.
+                const compIdx = components.findIndex(c => c.name === p.target);
+                if (compIdx !== -1 && lastSimResult.resI) {
+                    rawData = lastSimResult.resI[compIdx];
+                }
+            }
+
+            if (rawData && rawData.length > 0) {
+                const data = rawData.filter((_,j)=>j%stride===0);
+                sets.push({
+                    label: `${p.type}(${p.label})`,
+                    data: data,
+                    borderColor: p.color,
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    tension: 0.1 // 곡선 부드럽게
+                });
+            }
+        });
+
         const gridColor = isDarkMode ? '#333' : '#ddd';
         const textColor = isDarkMode ? '#aaa' : '#666';
-        myChart=new Chart(ctx,{
-            type:'line', data:{labels,datasets:sets},
-            options:{
-                responsive:true, maintainAspectRatio:false, animation:false,
+        
+        myChart = new Chart(ctx, {
+            type: 'line', 
+            data: { labels, datasets: sets },
+            options: {
+                responsive: true, 
+                maintainAspectRatio: false, 
+                animation: false,
                 interaction: { mode: 'nearest', axis: 'x', intersect: false },
-                scales:{ 
-                    x:{title:{display:true,text:'Time'}, grid:{color:gridColor}, ticks:{color:textColor, maxTicksLimit:8}}, 
-                    y:{title:{display:true, text:'Voltage (V)'}, grid:{color:gridColor}, ticks:{color:textColor}} 
+                scales: { 
+                    x: {
+                        title: {display:true, text:'Time'}, 
+                        grid: {color:gridColor}, 
+                        ticks: {color:textColor, maxTicksLimit: 8} 
+                    }, 
+                    y: {
+                        title: {display:true, text:'Amplitude (V/A)'}, 
+                        grid: {color:gridColor}, 
+                        ticks: {color:textColor}
+                    } 
                 },
-                plugins: { legend: { labels: { color: textColor } } }
+                plugins: { 
+                    legend: { labels: { color: textColor } },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) { label += ': '; }
+                                if (context.parsed.y !== null) { label += formatEng(context.parsed.y); }
+                                return label;
+                            }
+                        }
+                    }
+                }
             }
         });
     }
