@@ -362,6 +362,11 @@
             if(type==='R'){ c.val=1000; c.unit='Ω'; } else if(type==='L'){ c.val=10e-3; c.unit='H'; } else if(type==='C'){ c.val=100e-6; c.unit='F'; }
             else if(type==='V_DC'){ c.val=5; c.unit='V'; } else if(type==='V_AC'){ c.val=220; c.unit='V'; }
             else if(type==='I_AC'){ c.val=1; c.unit='A'; } else if(type==='TX'){ c.ratio=1; c.unit=''; }
+            // spawn 함수 내부 수정
+            else if(type === 'V_SQU' || type === 'V_TRI' || type === 'V_PULSE'){
+                c.val = 5; c.unit = 'V'; c.freq = 60; c.phase = 0;
+                if(type === 'V_PULSE') c.duty = 50; // 듀티 사이클 (50%)    
+            }
         }
         const { rw } = getGridMetrics();
         const initX = (c.uiX !== undefined) ? c.uiX : START_X + rw/2;
@@ -451,6 +456,19 @@
             g.add(l([0,mid, 40,mid])); g.add(l([60,mid, 100,mid]));
             if(type==='V_DC'){ g.add(l([40,mid-8, 40,mid+8], 2)); g.add(l([60,mid-16, 60,mid+16], 2)); g.add(new Konva.Text({x:65, y:mid-15, text:'+', fontSize:14, fill:'#e74c3c', fontStyle:'bold'})); }
             else { g.add(new Konva.Circle({x:50, y:mid, radius:15, stroke:'#888', strokeWidth:2})); g.add(new Konva.Path({x:43, y:mid, data:`M0,0 Q3.5,-6 7,0 T14,0`, stroke:'#888', strokeWidth:2})); }
+            g.add(new Konva.Circle({x:50, y:mid, radius:15, stroke:'#888', strokeWidth:2}));
+    
+    // 파형 아이콘 그리기
+    if(type === 'V_AC') { /* 기존 사인파 */ }
+    else if(type === 'V_SQU') {
+        g.add(new Konva.Line({points:[38,mid+5, 38,mid-5, 50,mid-5, 50,mid+5, 62,mid+5, 62,mid-5], stroke:'#888', strokeWidth:1.5}));
+    }
+    else if(type === 'V_TRI') {
+        g.add(new Konva.Line({points:[38,mid, 44,mid-6, 56,mid+6, 62,mid], stroke:'#888', strokeWidth:1.5}));
+    }
+    else if(type === 'V_PULSE') {
+        g.add(new Konva.Line({points:[38,mid+5, 42,mid+5, 42,mid-5, 48,mid-5, 48,mid+5, 62,mid+5], stroke:'#888', strokeWidth:1.5}));
+    }
         }
         else if(type==='I_AC') {
             g.add(l([0,mid, 40,mid])); g.add(l([60,mid, 100,mid]));
@@ -493,50 +511,106 @@
         
         let leftCol = `<div class="insp-left">`;
         leftCol += `<div class="insp-row"><label>Name</label><input type="text" value="${c.name}" disabled></div>`;
+        
         if (c.type === 'TX') {
             leftCol += `<div class="insp-row"><label>Turns Ratio (1:N)</label><input type="number" id="insp-ratio" value="${c.ratio}" step="0.1"></div>`;
             baseTuneValue = c.ratio; tuningParam = 'ratio';
         } else {
+            // [수정] 일반 값 표시
             leftCol += `<div class="insp-row"><label>Value (${c.unit})</label><input type="text" id="insp-val" value="${formatUnit(c.val, '').replace(/[a-zA-Z]*$/, '')}"></div>`;
             baseTuneValue = c.val; tuningParam = 'val';
-            if(c.type.includes('AC')) {
+
+            // [수정] AC 및 파형 소스(Square, Triangle, Pulse)에 대한 주파수/위상 표시
+            // 기존: c.type.includes('AC') -> 변경: c.type.includes('V_') || c.type === 'I_AC'
+            // (V_DC는 freq가 없으므로 제외해야 하지만, 간단히 구현하려면 아래처럼 조건 확장)
+            if(c.type.includes('AC') || c.type === 'V_SQU' || c.type === 'V_TRI' || c.type === 'V_PULSE') {
                 leftCol += `<div class="insp-row"><label>Frequency (Hz)</label><input type="number" id="insp-freq" value="${c.freq}"></div>`;
                 leftCol += `<div class="insp-row"><label>Phase (deg)</label><input type="number" id="insp-phase" value="${c.phase||0}"></div>`;
+            }
+
+            // [수정] Pulse 파형일 경우 Duty Cycle 입력창 추가
+            if (c.type === 'V_PULSE') {
+                leftCol += `<div class="insp-row"><label>Duty Cycle (%)</label><input type="number" id="insp-duty" value="${c.duty || 50}" min="1" max="99" step="1"></div>`;
             }
         }
         
         leftCol += `<div class="insp-row" style="display:flex; justify-content:space-between; margin-top:5px;">
                     <button class="btn-primary" onclick="rotateComponent()" style="flex:1; margin-right:5px;">↻ Rotate</button>
                     <button onclick="deleteSelected()" class="btn-danger" style="flex:1; margin-left:5px;">Delete</button>
-                 </div></div>`; 
+                  </div></div>`; 
 
+        // [수정] 튜닝 라디오 버튼 생성 로직
         let radioHTML = '';
-        if (c.type.includes('AC')) {
-            radioHTML = `<div class="radio-group"><label><input type="radio" name="tuneTarget" value="val" checked onchange="setTuneTarget('val')"> Mag</label><label><input type="radio" name="tuneTarget" value="freq" onchange="setTuneTarget('freq')"> Freq</label><label><input type="radio" name="tuneTarget" value="phase" onchange="setTuneTarget('phase')"> Phase</label></div>`;
+        if (c.type.includes('AC') || c.type === 'V_SQU' || c.type === 'V_TRI' || c.type === 'V_PULSE') {
+            radioHTML = `<div class="radio-group">
+                <label><input type="radio" name="tuneTarget" value="val" checked onchange="setTuneTarget('val')"> Mag</label>
+                <label><input type="radio" name="tuneTarget" value="freq" onchange="setTuneTarget('freq')"> Freq</label>
+                <label><input type="radio" name="tuneTarget" value="phase" onchange="setTuneTarget('phase')"> Phase</label>`;
+            
+            // [수정] Pulse일 때 Duty 튜닝 옵션 추가
+            if (c.type === 'V_PULSE') {
+                radioHTML += `<label><input type="radio" name="tuneTarget" value="duty" onchange="setTuneTarget('duty')"> Duty</label>`;
+            }
+            radioHTML += `</div>`;
         }
+        
         let rightCol = `<div class="tuning-wrapper">${radioHTML}<div class="tuning-label"><span>Tuning</span><span id="tune-pct">0%</span></div><input type="range" min="-50" max="50" value="0" id="tune-slider"><button class="btn-apply" onclick="applyTuning()">Apply</button></div>`;
         
         content.innerHTML = leftCol + rightCol;
         
-        const setVal = (k, v) => { c[k] = v; c.labelObj.text(getLabel(c)); if(k === tuningParam) baseTuneValue = v; compLayer.batchDraw(); pushHistory(); runSteady(); };
+        // [수정] 값 변경 핸들러 (setVal)
+        const setVal = (k, v) => { 
+            c[k] = v; 
+            // Duty 등은 Label에 바로 표시되지 않을 수 있으나 일관성을 위해 호출
+            c.labelObj.text(getLabel(c)); 
+            
+            if(k === tuningParam) baseTuneValue = v; 
+            compLayer.batchDraw(); 
+            pushHistory(); 
+            runSteady(); // DC/AC 해석 (Pulse는 Steady에서 DC 성분만 보거나 무시됨)
+            // Pulse 등은 과도 응답이 중요하므로 Transient도 갱신되면 좋음 (성능 고려)
+            if(['V_SQU', 'V_TRI', 'V_PULSE'].includes(c.type)) runTransient();
+        };
+
         const iVal = document.getElementById('insp-val'); if(iVal) iVal.onchange = e => setVal('val', parseUnit(e.target.value));
         const iRatio = document.getElementById('insp-ratio'); if(iRatio) iRatio.onchange = e => setVal('ratio', parseFloat(e.target.value));
         const iFreq = document.getElementById('insp-freq'); if(iFreq) iFreq.onchange = e => setVal('freq', parseFloat(e.target.value));
         const iPhase = document.getElementById('insp-phase'); if(iPhase) iPhase.onchange = e => setVal('phase', parseFloat(e.target.value));
+        
+        // [수정] Duty 핸들러 연결
+        const iDuty = document.getElementById('insp-duty'); if(iDuty) iDuty.onchange = e => setVal('duty', parseFloat(e.target.value));
+
         const slider = document.getElementById('tune-slider');
         const pctLabel = document.getElementById('tune-pct');
+        
         if(slider) {
             slider.oninput = (e) => {
                 const pct = parseInt(e.target.value);
                 pctLabel.innerText = (pct > 0 ? '+' : '') + pct + '%';
-                const newVal = baseTuneValue * (1 + pct/100);
+                
+                // [수정] Duty Cycle은 단순히 %를 더하는 방식이 나을 수 있음 (예: 50% + 10% -> 55%가 아니라 60%?)
+                // 여기서는 기존 로직대로 비율 곱셈(base * (1+pct)) 방식을 유지하되, Duty가 100을 넘지 않게 예외처리
+                let newVal = baseTuneValue * (1 + pct/100);
+                
+                if (tuningParam === 'duty') {
+                    if(newVal > 99) newVal = 99;
+                    if(newVal < 1) newVal = 1;
+                }
+
                 c[tuningParam] = newVal;
+                
+                // UI 값 업데이트
                 if(tuningParam === 'val') { const el = document.getElementById('insp-val'); if(el) el.value = formatUnit(newVal, '').replace(/[a-zA-Z]*$/, ''); }
                 else if (tuningParam === 'ratio') { const el = document.getElementById('insp-ratio'); if(el) el.value = newVal.toFixed(2); }
                 else if (tuningParam === 'freq') { const el = document.getElementById('insp-freq'); if(el) el.value = newVal.toFixed(2); }
                 else if (tuningParam === 'phase') { const el = document.getElementById('insp-phase'); if(el) el.value = newVal.toFixed(2); }
-                c.labelObj.text(getLabel(c)); compLayer.batchDraw(); runSteady(); 
+                else if (tuningParam === 'duty') { const el = document.getElementById('insp-duty'); if(el) el.value = newVal.toFixed(1); } // [수정] Duty UI 업데이트
+
+                c.labelObj.text(getLabel(c)); 
+                compLayer.batchDraw(); 
+                runSteady(); // Steady 갱신
             };
+            // [수정] Transient는 슬라이더를 놓았을 때(onchange) 실행 (성능 문제 방지)
             slider.onchange = (e) => { runTransient(); };
         }
     }
@@ -748,10 +822,36 @@
             Ls.forEach((c,i)=>{const idx=lOff+i, R=(2*c.val)/dt, v_eq = -l_prev_V[i] - R*l_prev_I[i]; B.set([idx,0], v_eq);});
             
             Vs.forEach((c,i)=>{
-                const idx=vOff+i; let v=c.val; 
-                if(c.type==='V_AC') v *= Math.sin(2*Math.PI*c.freq*t + (c.phase||0)*Math.PI/180); 
-                else if(t<0) v=0; 
-                B.set([idx,0], v);
+                const idx = vOff + i;
+    let v = c.val;
+    const omega = 2 * Math.PI * c.freq;
+    const phi = (c.phase || 0) * Math.PI / 180;
+    const theta = omega * t + phi;
+
+    if (c.type === 'V_AC') {
+        v *= Math.sin(theta);
+    } 
+    else if (c.type === 'V_SQU') {
+        // 사각파: sign(sin(theta))
+        v *= Math.sign(Math.sin(theta));
+    } 
+    else if (c.type === 'V_TRI') {
+        // 삼각파: 아크사인 등을 이용하거나 나머지 연산 이용
+        // (2/PI) * asin(sin(theta)) -> -1~1 범위의 삼각파
+        v *= (2 / Math.PI) * Math.asin(Math.sin(theta));
+    } 
+    else if (c.type === 'V_PULSE') {
+        // 펄스파: 듀티 사이클 고려
+        // 주기 T 내에서 현재 위치 확인
+        const period = 1 / c.freq;
+        const localT = (t + (c.phase || 0)/360 * period) % period;
+        const onTime = period * (c.duty / 100);
+        v = (localT < onTime) ? c.val : 0; // 혹은 -val (Unipolar vs Bipolar 선택)
+    }
+    else if (t < 0) v = 0; // DC의 경우
+
+    B.set([idx, 0], v);
+                
             });
             Is.forEach((c)=>{
                 let n1, n2; if(c.rotation===90||c.rotation===270){n1=map[c.nL];n2=-1;}else{n1=map[c.nL];n2=map[c.nR];}
