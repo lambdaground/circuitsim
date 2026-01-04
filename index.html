@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>General CirSim v.1.2 </title>
+    <title>General CirSim v.1.4 (High Precision)</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
     <script src="https://unpkg.com/konva@9.2.0/konva.min.js"></script>
@@ -12,7 +12,7 @@
     <style>
         :root { --bg-color: #1e1e1e; --panel-color: #252526; --text-color: #d4d4d4; --accent-color: #007acc; --border-color: #3e3e42; --canvas-bg: #121212; --input-bg: #333; }
         body.light-mode { --bg-color: #f3f3f3; --panel-color: #ffffff; --text-color: #333333; --accent-color: #007acc; --border-color: #cccccc; --canvas-bg: #ffffff; --input-bg: #fff; }
-        body { margin: 0; padding: 0; background-color: var(--bg-color); color: var(--text-color); font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; overflow: hidden; display: flex; height: 100vh; width: 100vw; transition: background 0.3s, color 0.3s; }
+        body { margin: 0; padding: 0; background-color: var(--bg-color); color: var(--text-color); font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; overflow: hidden; display: flex; height: 100vh; width: 100vw; }
         
         #left-col { flex: 0 0 18%; min-width: 240px; max-width: 350px; background-color: var(--panel-color); border-right: 1px solid var(--border-color); display: flex; flex-direction: column; padding: 15px; box-sizing: border-box; z-index: 20; overflow-y: auto; }
         #main-grid { flex: 1; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 40% 60%; height: 100vh; min-width: 0; }
@@ -77,7 +77,7 @@
 </head>
 <body>
     <div id="left-col">
-        <h2 style="margin: 0 0 5px 0; font-size: 18px;">General CirSim v.1.2</h2>
+        <h2 style="margin: 0 0 5px 0; font-size: 18px;">General CirSim v.1.4</h2>
         <div class="shortcut-hint">Ctrl+Z: Undo | Ctrl+C/V: Copy/Paste</div>
         <div class="shortcut-hint" style="margin-bottom: 15px;">Wheel: Zoom | Drag: Pan</div>
         <div class="grid-controls">
@@ -190,13 +190,15 @@
     </div>
 
 <script>
+    // [Fix: High DPI / Retina Display Support]
+    Konva.pixelRatio = window.devicePixelRatio || 1;
+
     const stage = new Konva.Stage({ container: 'canvas-container', width: 100, height: 100, draggable: true });
     const gridLayer = new Konva.Layer();
     const compLayer = new Konva.Layer();
     stage.add(gridLayer);
     stage.add(compLayer);
     
-    // Zoom & Pan
     const scaleBy = 1.1;
     stage.on('wheel', (e) => {
         e.evt.preventDefault();
@@ -213,7 +215,8 @@
     let components = [];
     let railCount = 6; 
     let groundRails = new Set([1]); 
-    let idCnt = { R:0, L:0, C:0, V:0, I:0, T:0 };
+    // [Fix: Initialize Diode/OPAMP counters to avoid DNaN]
+    let idCnt = { R:0, L:0, C:0, V:0, I:0, T:0, D:0, O:0 };
     
     const START_X = 65, BASE_W = 120;
     let TOP_GND_Y = 60, BOT_GND_Y = 500;
@@ -234,7 +237,6 @@
     let clipboard = null;
     const MAX_HISTORY = 20;
 
-    // [Probe]
     let activeProbes = [];
     const probeColors = ['#e03131', '#1971c2', '#2f9e44', '#f08c00', '#9c36b5', '#20c997', '#5f3dc4'];
 
@@ -329,7 +331,13 @@
 
     function generateUniqueName(type) {
         let prefix = type.charAt(0);
-        if(type.includes('V')) prefix = 'V'; else if(type.includes('I')) prefix = 'I'; else if(type === 'TX') prefix = 'T';
+        if(type.includes('V')) prefix = 'V'; 
+        else if(type.includes('I')) prefix = 'I'; 
+        else if(type === 'TX') prefix = 'T';
+        else if(type === 'D') prefix = 'D'; // Fix DNaN
+        else if(type === 'OPAMP') prefix = 'O';
+        
+        if(!idCnt[prefix]) idCnt[prefix] = 0;
         idCnt[prefix]++;
         return prefix + idCnt[prefix];
     }
@@ -340,10 +348,15 @@
             c = { ...params }; c.group = null; c.lineL = null; c.lineR = null; c.lineOut = null; c.labelObj = null; c.shapeObj = null;
         } else {
             const name = generateUniqueName(type);
-            c = { name, type, val: 0, freq: 60, phase: 0, unit: '', nL: 1, nR: 2, ratio: 1, rotation: (type==='OPAMP'?90:0) };
-            if(type==='R'){ c.val=1000; c.unit='Ω'; } else if(type==='L'){ c.val=10e-3; c.unit='H'; } else if(type==='C'){ c.val=100e-6; c.unit='F'; }
-            else if(type==='V_DC'){ c.val=5; c.unit='V'; } else if(type==='V_AC'){ c.val=220; c.unit='V'; }
-            else if(type==='I_AC'){ c.val=1; c.unit='A'; } else if(type==='TX'){ c.ratio=1; c.unit=''; }
+            c = { name, type, val: 0, freq: 60, phase: 0, unit: '', nL: 1, nR: 2, ratio: 1, rotation: 0 };
+            
+            if(type==='R'){ c.val=1000; c.unit='Ω'; } 
+            else if(type==='L'){ c.val=10e-3; c.unit='H'; } 
+            else if(type==='C'){ c.val=100e-6; c.unit='F'; }
+            else if(type==='V_DC'){ c.val=5; c.unit='V'; } 
+            else if(type==='V_AC'){ c.val=220; c.unit='V'; }
+            else if(type==='I_AC'){ c.val=1; c.unit='A'; } 
+            else if(type==='TX'){ c.ratio=1; c.unit=''; }
             else if(type === 'V_SQU' || type === 'V_TRI' || type === 'V_PULSE'){
                 c.val = 5; c.unit = 'V'; c.freq = 60; c.phase = 0;
                 if(type === 'V_PULSE') c.duty = 50; 
@@ -351,7 +364,7 @@
             else if(type === 'D') { c.val = 0.7; c.unit = 'V'; }
             else if(type === 'OPAMP') { 
                 c.val = 100000; c.unit = 'Gain'; 
-                c.nL = 2; c.nR = 4; 
+                c.nL = 2; c.nR = 4; // Top(-) and Bot(+)
             }
         }
         const { rw } = getGridMetrics();
@@ -432,6 +445,7 @@
                 const xTop = START_X + (c.nL-1)*rw;
                 const xBot = START_X + (c.nR-1)*rw;
                 const xMid = (xTop + xBot) / 2; 
+                // [Fix: Wire positions for 90deg OPAMP]
                 const topTermY = cy - 15*compScale;
                 const botTermY = cy + 15*compScale;
                 c.lineL.points([xTop, topTermY, cx - 50*compScale, topTermY]);
@@ -526,6 +540,8 @@
 
     function getLabel(c) {
         if(c.type==='TX') return `${c.name}\n1:${c.ratio}`;
+        // [Fix: Force 'V' unit for Diode display]
+        if(c.type==='D') return `${c.name}\n${c.val}V`;
         let t=`${c.name}\n${formatUnit(c.val,c.unit)}`;
         if(c.type.includes('AC') || c.type.includes('V_') || c.type==='I_AC') {
              if(c.type!=='V_DC') t+=`\n${formatUnit(c.freq,'Hz')} ∠${c.phase||0}°`;
@@ -544,7 +560,10 @@
             leftCol += `<div class="insp-row"><label>Turns Ratio (1:N)</label><input type="number" id="insp-ratio" value="${c.ratio}" step="0.1"></div>`;
             baseTuneValue = c.ratio; tuningParam = 'ratio';
         } else {
-            leftCol += `<div class="insp-row"><label>Value (${c.unit})</label><input type="text" id="insp-val" value="${formatUnit(c.val, '').replace(/[a-zA-Z]*$/, '')}"></div>`;
+            // [Fix: Value Display Logic - Force V unit for Diode]
+            let valStr = formatUnit(c.val, '').replace(/[a-zA-Z]*$/, '');
+            if(c.type === 'D') valStr = c.val; 
+            leftCol += `<div class="insp-row"><label>Value (${c.unit})</label><input type="text" id="insp-val" value="${valStr}"></div>`;
             baseTuneValue = c.val; tuningParam = 'val';
 
             if(c.type.includes('V_') || c.type === 'I_AC') {
@@ -672,6 +691,7 @@
         });
     }
 
+    // [Fix: Steady State with Diode & OPAMP]
     function runSteady() {
         const s=getSetup(); if(!s)return; const {map,N}=s;
         const acs = components.filter(c=>c.type.includes('AC') || c.type==='I_AC');
@@ -682,8 +702,9 @@
         let A=math.zeros(size,size,'dense'), B=math.zeros(size,1,'dense');
         const vOff=N, tOff=vOff+Vs.length;
         
+        for(let i=0; i<size; i++) A.set([i,i], math.complex(1e-12,0)); // Prevent singularity
+
         components.forEach(c=>{
-            if(c.type==='D') return; 
             let n1, n2;
             if(c.rotation === 90 || c.rotation === 270) { n1 = map[c.nL]; n2 = -1; } 
             else { n1 = map[c.nL]; n2 = map[c.nR]; }
@@ -694,6 +715,13 @@
                 else if(c.type==='L') Y=(w===0)?math.complex(1e9,0):math.complex(0, -1/(w*c.val));
                 else if(c.type==='C') Y=(w===0)?math.complex(0,0):math.complex(0, w*c.val);
                 
+                if(n1>=0) A.set([n1,n1],math.add(A.get([n1,n1]),Y));
+                if(n2>=0) A.set([n2,n2],math.add(A.get([n2,n2]),Y));
+                if(n1>=0&&n2>=0){ const nY=math.multiply(Y,-1); A.set([n1,n2],math.add(A.get([n1,n2]),nY)); A.set([n2,n1],math.add(A.get([n2,n1]),nY)); }
+            }
+            else if(c.type === 'D') {
+                // Diode in DC/Steady: Treat as OFF (High Resistance) for simplicity if no DC operating point analysis
+                let Y = math.complex(1e-8, 0); 
                 if(n1>=0) A.set([n1,n1],math.add(A.get([n1,n1]),Y));
                 if(n2>=0) A.set([n2,n2],math.add(A.get([n2,n2]),Y));
                 if(n1>=0&&n2>=0){ const nY=math.multiply(Y,-1); A.set([n1,n2],math.add(A.get([n1,n2]),nY)); A.set([n2,n1],math.add(A.get([n2,n1]),nY)); }
@@ -751,6 +779,7 @@
     function addCustomFormula() { const inp = document.getElementById('formula-inp'); const val = inp.value.trim(); if(!val) return; customFormulas.push(val); inp.value = ''; if(steadyResults) runSteady(); }
     function removeCustomFormula(idx) { customFormulas.splice(idx, 1); runSteady(); }
 
+    // [Fix: Iterative Transient Solver for Diodes]
     async function runTransient() {
         const s=getSetup(); if(!s)return; const {map,N}=s;
         const tMax_ms = parseFloat(document.getElementById('tMax').value);
@@ -776,6 +805,8 @@
         let x=math.zeros(size,1); 
         const c_prev_V=new Array(Cs.length).fill(0); const c_prev_I=new Array(Cs.length).fill(0);
         const l_prev_V=new Array(Ls.length).fill(0); const l_prev_I=new Array(Ls.length).fill(0);
+        
+        // Diode state per time step (for iteration)
         const d_state = new Array(Ds.length).fill(false); 
 
         const resV=Array(N).fill(0).map(()=>[]);
@@ -788,129 +819,153 @@
             const t=s*dt;
             if(steps>5000 && s%chunk===0){ pFill.style.width=`${(s/steps)*100}%`; pTxt.innerText=`${Math.round(s/steps*100)}%`; await new Promise(r=>setTimeout(r,0)); }
 
-            let A=math.zeros(size,size); let B=math.zeros(size,1);
-            const addA=(r,c,v)=>{if(r>=0&&c>=0)A.set([r,c],A.get([r,c])+v)};
-            const addB=(r,v)=>{if(r>=0)B.set([r,0],B.get([r,0])+v)};
+            // Convergence Loop for Diode (prevents chattering)
+            const MAX_ITER = 10;
+            for(let iter=0; iter<MAX_ITER; iter++) {
+                
+                let A=math.zeros(size,size); let B=math.zeros(size,1);
+                for(let i=0; i<size; i++) A.set([i,i], 1e-12); // Stability
 
-            components.forEach(c=>{
-                if(c.type==='D' || c.type==='OPAMP' || c.type.includes('V') || c.type.includes('I')) return;
-                let n1, n2; if(c.rotation===90||c.rotation===270){n1=map[c.nL];n2=-1;} else{n1=map[c.nL];n2=map[c.nR];}
+                const addA=(r,c,v)=>{if(r>=0&&c>=0)A.set([r,c],A.get([r,c])+v)};
+                const addB=(r,v)=>{if(r>=0)B.set([r,0],B.get([r,0])+v)};
 
-                if(c.type==='R'){ const g=1/c.val; addA(n1,n1,g); addA(n2,n2,g); addA(n1,n2,-g); addA(n2,n1,-g); }
-                else if(c.type==='C'){ 
-                    const idx=Cs.indexOf(c); const g=(2*c.val)/dt; 
-                    addA(n1,n1,g); addA(n2,n2,g); addA(n1,n2,-g); addA(n2,n1,-g);
-                    const I_inj=g*c_prev_V[idx]+c_prev_I[idx]; addB(n1,I_inj); addB(n2,-I_inj);
-                }
-                else if(c.type==='L'){ 
-                    const idx=lOff+Ls.indexOf(c); const r=(2*c.val)/dt; 
-                    if(n1>=0){A.set([n1,idx],1);A.set([idx,n1],1);} 
-                    if(n2>=0){A.set([n2,idx],-1);A.set([idx,n2],-1);} 
-                    A.set([idx,idx],-r);
-                    B.set([idx,0], -l_prev_V[Ls.indexOf(c)] - r*l_prev_I[Ls.indexOf(c)]);
-                }
-                else if(c.type==='TX'){
-                     const idx=tOff+Ts.indexOf(c); 
-                     if(n2>=0){A.set([n2,idx],1);A.set([idx,n2],1);} 
-                     if(n1>=0){A.set([n1,idx],-c.ratio);A.set([idx,n1],-c.ratio);}
-                }
-            });
+                // 1. Linear Components
+                components.forEach(c=>{
+                    if(c.type==='D' || c.type==='OPAMP' || c.type.includes('V') || c.type.includes('I')) return;
+                    let n1, n2; if(c.rotation===90||c.rotation===270){n1=map[c.nL];n2=-1;} else{n1=map[c.nL];n2=map[c.nR];}
 
-            Ds.forEach((c, i) => {
-                let n1, n2; if(c.rotation===90||c.rotation===270){n1=map[c.nL];n2=-1;} else{n1=map[c.nL];n2=map[c.nR];}
-                if(d_state[i]) {
-                    const g = 1/0.1; addA(n1,n1,g); addA(n2,n2,g); addA(n1,n2,-g); addA(n2,n1,-g);
-                    const i_src = c.val * g; addB(n1, -i_src); addB(n2, i_src);
-                } else {
-                    const g = 1e-8; addA(n1,n1,g); addA(n2,n2,g); addA(n1,n2,-g); addA(n2,n1,-g);
-                }
-            });
-
-            Vs.forEach((c, i) => {
-                const idx = vOff + i;
-                let n1, n2;
-                if(c.rotation===90||c.rotation===270){n1=map[c.nL];n2=-1;} else{n1=map[c.nL];n2=map[c.nR];}
-                if(n2>=0){A.set([n2,idx],1);A.set([idx,n2],1);} 
-                if(n1>=0){A.set([n1,idx],-1);A.set([idx,n1],-1);}
-
-                if(c.type === 'OPAMP') {
-                    const np = map[c.nR]; const nm = map[c.nL]; // + input, - input
-                    const nOut = map[Math.round((c.nL+c.nR)/2)];
-                    
-                    // Reset matrix rows
-                    if(n2>=0){A.set([n2,idx],0);A.set([idx,n2],0);} if(n1>=0){A.set([n1,idx],0);A.set([idx,n1],0);}
-                    
-                    if(nOut>=0) { A.set([nOut,idx],1); A.set([idx,nOut],1); }
-                    const gain = c.val;
-                    if(np>=0) A.set([idx, np], A.get([idx, np]) - gain);
-                    if(nm>=0) A.set([idx, nm], A.get([idx, nm]) + gain);
-                    B.set([idx, 0], 0);
-                } else {
-                    let v = c.val;
-                    const omega = 2 * Math.PI * c.freq;
-                    const phi = (c.phase || 0) * Math.PI / 180;
-                    const theta = omega * t + phi;
-                    if (c.type === 'V_AC') v *= Math.sin(theta);
-                    else if (c.type === 'V_SQU') v *= Math.sign(Math.sin(theta));
-                    else if (c.type === 'V_TRI') v *= (2/Math.PI)*Math.asin(Math.sin(theta));
-                    else if (c.type === 'V_PULSE') {
-                         const period = 1/c.freq; const localT=(t+(c.phase||0)/360*period)%period;
-                         v = (localT < period*(c.duty/100)) ? c.val : 0;
+                    if(c.type==='R'){ const g=1/c.val; addA(n1,n1,g); addA(n2,n2,g); addA(n1,n2,-g); addA(n2,n1,-g); }
+                    else if(c.type==='C'){ 
+                        const idx=Cs.indexOf(c); const g=(2*c.val)/dt; 
+                        addA(n1,n1,g); addA(n2,n2,g); addA(n1,n2,-g); addA(n2,n1,-g);
+                        const I_inj=g*c_prev_V[idx]+c_prev_I[idx]; addB(n1,I_inj); addB(n2,-I_inj);
                     }
-                    else if (t < 0) v = 0;
-                    B.set([idx, 0], v);
-                }
-            });
-
-            Is.forEach(c => {
-                 let n1, n2; if(c.rotation===90||c.rotation===270){n1=map[c.nL];n2=-1;}else{n1=map[c.nL];n2=map[c.nR];}
-                 const val = c.val * Math.sin(2*Math.PI*c.freq*t + (c.phase||0)*Math.PI/180);
-                 addB(n1, val); addB(n2, -val);
-            });
-
-            try{
-                x=math.lusolve(A,B);
-                timeLog.push(t);
-                for(let i=0;i<N;i++) resV[i].push(x.get([i,0]));
-
-                Cs.forEach((c,i)=>{
-                    let n1, n2; if(c.rotation===90||c.rotation===270){n1=map[c.nL];n2=-1;}else{n1=map[c.nL];n2=map[c.nR];}
-                    const v1=n1>=0?x.get([n1,0]):0; const v2=n2>=0?x.get([n2,0]):0;
-                    const v=v1-v2; const G=(2*c.val)/dt; 
-                    const i_new = -c_prev_I[i] + G*(v - c_prev_V[i]); 
-                    c_prev_V[i]=v; c_prev_I[i]=i_new;
+                    else if(c.type==='L'){ 
+                        const idx=lOff+Ls.indexOf(c); const r=(2*c.val)/dt; 
+                        if(n1>=0){A.set([n1,idx],1);A.set([idx,n1],1);} 
+                        if(n2>=0){A.set([n2,idx],-1);A.set([idx,n2],-1);} 
+                        A.set([idx,idx],-r);
+                        B.set([idx,0], -l_prev_V[Ls.indexOf(c)] - r*l_prev_I[Ls.indexOf(c)]);
+                    }
+                    else if(c.type==='TX'){
+                        const idx=tOff+Ts.indexOf(c); 
+                        if(n2>=0){A.set([n2,idx],1);A.set([idx,n2],1);} 
+                        if(n1>=0){A.set([n1,idx],-c.ratio);A.set([idx,n1],-c.ratio);}
+                    }
                 });
-                Ls.forEach((c,i)=>{
-                    let n1, n2; if(c.rotation===90||c.rotation===270){n1=map[c.nL];n2=-1;}else{n1=map[c.nL];n2=map[c.nR];}
-                    const i_new=x.get([lOff+i,0]);
-                    const v1=n1>=0?x.get([n1,0]):0; const v2=n2>=0?x.get([n2,0]):0;
-                    l_prev_V[i]=v1-v2; l_prev_I[i]=i_new;
+
+                // 2. Diodes (Iterative Model)
+                Ds.forEach((c, i) => {
+                    let n1, n2; if(c.rotation===90||c.rotation===270){n1=map[c.nL];n2=-1;} else{n1=map[c.nL];n2=map[c.nR];}
+                    if(d_state[i]) {
+                        // ON: Series Voltage source + Resistor
+                        const g = 1/0.1; 
+                        addA(n1,n1,g); addA(n2,n2,g); addA(n1,n2,-g); addA(n2,n1,-g);
+                        const i_src = c.val * g; addB(n1, -i_src); addB(n2, i_src);
+                    } else {
+                        // OFF: High Resistance
+                        const g = 1e-9; 
+                        addA(n1,n1,g); addA(n2,n2,g); addA(n1,n2,-g); addA(n2,n1,-g);
+                    }
                 });
+
+                // 3. Voltage Sources & OPAMP
+                Vs.forEach((c, i) => {
+                    const idx = vOff + i;
+                    let n1, n2;
+                    if(c.rotation===90||c.rotation===270){n1=map[c.nL];n2=-1;} else{n1=map[c.nL];n2=map[c.nR];}
+                    
+                    if(c.type === 'OPAMP') {
+                        const np = map[c.nR]; const nm = map[c.nL]; const nOut = map[Math.round((c.nL+c.nR)/2)];
+                        if(nOut>=0) { A.set([nOut,idx],1); A.set([idx,nOut],1); }
+                        const gain = c.val;
+                        if(np>=0) A.set([idx, np], A.get([idx, np]) - gain);
+                        if(nm>=0) A.set([idx, nm], A.get([idx, nm]) + gain);
+                        B.set([idx, 0], 0);
+                    } else {
+                        if(n2>=0){A.set([n2,idx],1);A.set([idx,n2],1);} 
+                        if(n1>=0){A.set([n1,idx],-1);A.set([idx,n1],-1);}
+                        
+                        let v = c.val;
+                        const omega = 2 * Math.PI * c.freq;
+                        const phi = (c.phase || 0) * Math.PI / 180;
+                        const theta = omega * t + phi;
+                        if (c.type === 'V_AC') v *= Math.sin(theta);
+                        else if (c.type === 'V_SQU') v *= Math.sign(Math.sin(theta));
+                        else if (c.type === 'V_TRI') v *= (2/Math.PI)*Math.asin(Math.sin(theta));
+                        else if (c.type === 'V_PULSE') {
+                            const period = 1/c.freq; const localT=(t+(c.phase||0)/360*period)%period;
+                            v = (localT < period*(c.duty/100)) ? c.val : 0;
+                        }
+                        else if (t < 0) v = 0;
+                        B.set([idx, 0], v);
+                    }
+                });
+
+                // 4. Current Sources
+                Is.forEach(c => {
+                    let n1, n2; if(c.rotation===90||c.rotation===270){n1=map[c.nL];n2=-1;}else{n1=map[c.nL];n2=map[c.nR];}
+                    const val = c.val * Math.sin(2*Math.PI*c.freq*t + (c.phase||0)*Math.PI/180);
+                    addB(n1, val); addB(n2, -val);
+                });
+
+                // Solve
+                try {
+                    x = math.lusolve(A, B);
+                } catch(e) { console.error("Matrix Error", e); break; }
+
+                // Check Convergence for Diodes
+                let converged = true;
                 Ds.forEach((c, i) => {
                     let n1, n2; if(c.rotation===90||c.rotation===270){n1=map[c.nL];n2=-1;} else{n1=map[c.nL];n2=map[c.nR];}
                     const v1=n1>=0?x.get([n1,0]):0; const v2=n2>=0?x.get([n2,0]):0;
-                    d_state[i] = ((v1 - v2) > c.val); 
+                    const newState = ((v1 - v2) > c.val);
+                    if(d_state[i] !== newState) {
+                        d_state[i] = newState;
+                        converged = false;
+                    }
                 });
 
-                components.forEach((c, cIdx) => {
-                    let curr = 0;
-                    if(c.type.includes('V') || c.type === 'OPAMP') { curr = x.get([vOff + Vs.indexOf(c), 0]); }
-                    else if(c.type === 'L') { curr = l_prev_I[Ls.indexOf(c)]; }
-                    else if(c.type === 'C') { curr = c_prev_I[Cs.indexOf(c)]; }
-                    else if(c.type === 'R') { 
-                        let n1,n2; if(c.rotation===90||c.rotation===270){n1=map[c.nL];n2=-1;}else{n1=map[c.nL];n2=map[c.nR];}
-                        const v1=n1>=0?x.get([n1,0]):0; const v2=n2>=0?x.get([n2,0]):0;
-                        curr = (v1-v2)/c.val;
-                    }
-                    else if(c.type === 'D') {
-                        let n1,n2; if(c.rotation===90||c.rotation===270){n1=map[c.nL];n2=-1;}else{n1=map[c.nL];n2=map[c.nR];}
-                        const v1=n1>=0?x.get([n1,0]):0; const v2=n2>=0?x.get([n2,0]):0;
-                        const v=v1-v2;
-                        if(v > c.val) curr = (v - c.val) / 0.1; else curr = v / 1e8;
-                    }
-                    resI[cIdx].push(curr);
-                });
-            } catch(e){ console.error(e); break; }
+                if(converged) break;
+            }
+
+            timeLog.push(t);
+            for(let i=0;i<N;i++) resV[i].push(x.get([i,0]));
+
+            // Update C/L Memory
+            Cs.forEach((c,i)=>{
+                let n1, n2; if(c.rotation===90||c.rotation===270){n1=map[c.nL];n2=-1;}else{n1=map[c.nL];n2=map[c.nR];}
+                const v1=n1>=0?x.get([n1,0]):0; const v2=n2>=0?x.get([n2,0]):0;
+                const v=v1-v2; const G=(2*c.val)/dt; 
+                const i_new = -c_prev_I[i] + G*(v - c_prev_V[i]); 
+                c_prev_V[i]=v; c_prev_I[i]=i_new;
+            });
+            Ls.forEach((c,i)=>{
+                let n1, n2; if(c.rotation===90||c.rotation===270){n1=map[c.nL];n2=-1;}else{n1=map[c.nL];n2=map[c.nR];}
+                const i_new=x.get([lOff+i,0]);
+                const v1=n1>=0?x.get([n1,0]):0; const v2=n2>=0?x.get([n2,0]):0;
+                l_prev_V[i]=v1-v2; l_prev_I[i]=i_new;
+            });
+
+            // Store Currents
+            components.forEach((c, cIdx) => {
+                let curr = 0;
+                if(c.type.includes('V') || c.type === 'OPAMP') { curr = x.get([vOff + Vs.indexOf(c), 0]); }
+                else if(c.type === 'L') { curr = l_prev_I[Ls.indexOf(c)]; }
+                else if(c.type === 'C') { curr = c_prev_I[Cs.indexOf(c)]; }
+                else if(c.type === 'R') { 
+                    let n1,n2; if(c.rotation===90||c.rotation===270){n1=map[c.nL];n2=-1;}else{n1=map[c.nL];n2=map[c.nR];}
+                    const v1=n1>=0?x.get([n1,0]):0; const v2=n2>=0?x.get([n2,0]):0;
+                    curr = (v1-v2)/c.val;
+                }
+                else if(c.type === 'D') {
+                    let n1,n2; if(c.rotation===90||c.rotation===270){n1=map[c.nL];n2=-1;}else{n1=map[c.nL];n2=map[c.nR];}
+                    const v1=n1>=0?x.get([n1,0]):0; const v2=n2>=0?x.get([n2,0]):0;
+                    const v=v1-v2;
+                    if(v > c.val) curr = (v - c.val) / 0.1; else curr = v / 1e8;
+                }
+                resI[cIdx].push(curr);
+            });
         }
         pOv.style.display='none';
         lastSimResult = { dt, resV, resI, N, map, timeLog };
@@ -921,7 +976,10 @@
     function drawTransientChart(times, vData, N, map) {
         const ctx = document.getElementById('transientChart').getContext('2d');
         if(myChart) myChart.destroy();
-        const stride = Math.ceil(times.length / 1000); 
+        
+        let stride = 1;
+        if(times.length > 2000) stride = Math.ceil(times.length / 2000);
+        
         const labels = times.filter((_,i)=>i%stride===0).map(t=>(t*1000).toFixed(2) + 'ms');
         const sets = [];
         
@@ -1052,7 +1110,6 @@
         if(row) { row.classList.add('peak-row-active'); row.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
     }
 
-    // [Utility Functions Restored]
     function formatEng(v) { if (v === 0) return "0"; if (Math.abs(v) < 1e-15) return "0"; const p = Math.floor(Math.log10(Math.abs(v)) / 3); const prefixes = ['p', 'n', 'u', 'm', '', 'k', 'M', 'G']; const s = prefixes[p + 4]; if (s === undefined) return v.toExponential(2); return (v / Math.pow(10, p * 3)).toFixed(2) + s; }
     function parseUnit(s){if(!s)return NaN;s=s.toString();const m=s.match(/^([\d\.]+)\s*([a-zA-Z]*)$/);if(!m)return parseFloat(s);const v=parseFloat(m[1]),u=m[2],k={'p':1e-12,'n':1e-9,'u':1e-6,'m':1e-3,'k':1e3,'M':1e6,'G':1e9};return v*(k[u]||1);}
     function formatUnit(v,u){if(Math.abs(v)<1e-15)return "0"+u;const a=Math.abs(v),r=[{v:1e9,s:'G'},{v:1e6,s:'M'},{v:1e3,s:'k'},{v:1,s:''},{v:1e-3,s:'m'},{v:1e-6,s:'u'},{v:1e-9,s:'n'},{v:1e-12,s:'p'}];for(let x of r)if(a>=x.v*0.9)return parseFloat((v/x.v).toFixed(2))+x.s+u;return v.toExponential(1)+u;}
@@ -1068,7 +1125,7 @@
     function restoreState(json) { 
         const d = JSON.parse(json); 
         components.forEach(c=>{c.group.destroy();c.lineL.destroy();c.lineR.destroy();if(c.lineOut)c.lineOut.destroy();}); 
-        components=[]; railCount = d.railCount; groundRails = new Set(d.groundRails); idCnt={R:0,L:0,C:0,V:0,I:0,T:0}; 
+        components=[]; railCount = d.railCount; groundRails = new Set(d.groundRails); idCnt={R:0,L:0,C:0,V:0,I:0,T:0,D:0,O:0}; 
         d.components.forEach(c => { spawn(c.type, c); }); drawGrid(); 
     }
     
@@ -1079,7 +1136,7 @@
     function loadCircuit(input){ const f=input.files[0]; if(!f) return; const r=new FileReader(); r.onload=(e)=>{ try{ const d=JSON.parse(e.target.result); resetAll(); railCount=d.railCount||6; groundRails=new Set(d.groundRails||[1]); d.components.forEach(c=>spawn(c.type,c)); drawGrid(); pushHistory(); }catch(err){alert("Error");} }; r.readAsText(f); input.value=''; }
     function resetAll(){ 
         components.forEach(c=>{c.group.destroy();c.lineL.destroy();c.lineR.destroy();if(c.lineOut)c.lineOut.destroy();}); 
-        components=[]; idCnt={R:0,L:0,C:0,V:0,I:0,T:0}; railCount=6; groundRails=new Set([1]); activeProbes=[]; updateProbeUI();
+        components=[]; idCnt={R:0,L:0,C:0,V:0,I:0,T:0,D:0,O:0}; railCount=6; groundRails=new Set([1]); activeProbes=[]; updateProbeUI();
         drawGrid(); if(myChart)myChart.destroy(); if(fftChart)fftChart.destroy(); pushHistory(); 
     }
     function copyComponent(){ if(selectedComp) clipboard = {type:selectedComp.type, val:selectedComp.val, freq:selectedComp.freq, phase:selectedComp.phase, unit:selectedComp.unit, ratio:selectedComp.ratio, duty:selectedComp.duty}; }
