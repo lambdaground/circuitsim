@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>General CirSim v.1.2</title>
+    <title>General CirSim v.1.2 </title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
     <script src="https://unpkg.com/konva@9.2.0/konva.min.js"></script>
@@ -77,7 +77,7 @@
 </head>
 <body>
     <div id="left-col">
-        <h2 style="margin: 0 0 5px 0; font-size: 18px;">General CirSim v.1.1</h2>
+        <h2 style="margin: 0 0 5px 0; font-size: 18px;">General CirSim v.1.2</h2>
         <div class="shortcut-hint">Ctrl+Z: Undo | Ctrl+C/V: Copy/Paste</div>
         <div class="shortcut-hint" style="margin-bottom: 15px;">Wheel: Zoom | Drag: Pan</div>
         <div class="grid-controls">
@@ -334,7 +334,6 @@
         return prefix + idCnt[prefix];
     }
 
-    // [New] Spawn with OPAMP/Waveform Support
     function spawn(type, params = null) {
         let c;
         if (params) {
@@ -352,7 +351,7 @@
             else if(type === 'D') { c.val = 0.7; c.unit = 'V'; }
             else if(type === 'OPAMP') { 
                 c.val = 100000; c.unit = 'Gain'; 
-                c.nL = 2; c.nR = 4; // Top(-) and Bot(+)
+                c.nL = 2; c.nR = 4; 
             }
         }
         const { rw } = getGridMetrics();
@@ -415,7 +414,6 @@
         if(!params) pushHistory();
     }
 
-    // [New] Component Update Logic (3-wire for OPAMP)
     function updateComp(c, dragging=false){
         const {rw, compScale} = getGridMetrics();
         c.group.scale({x: compScale, y: compScale});
@@ -463,7 +461,6 @@
         c.labelObj.fill(isDarkMode ? '#d4d4d4' : '#333');
     }
 
-    // [New] Draw Shape with Waveforms, Diode, OPAMP
     function drawShape(type) {
         const g = new Konva.Group({offsetX:50, offsetY:20});
         const bgCol = isDarkMode ? '#121212' : '#ffffff';
@@ -507,8 +504,8 @@
         }
         else if(type==='TX') {
             g.add(l([48, 5, 48, 35], 2)); g.add(l([52, 5, 52, 35], 2)); 
-            g.add(new Konva.Path({data:"M35,10 c-6,0 -6,6 0,6 c-6,0 -6,6 0,6 c-6,0 -6,6 0,6 c-6,0 -6,6 0,6", stroke:'#888', strokeWidth:2}));
-            g.add(new Konva.Path({data:"M65,10 c6,0 6,6 0,6 c6,0 6,6 0,6 c6,0 6,6 0,6 c6,0 6,6 0,6", stroke:'#888', strokeWidth:2}));
+            g.add(new Konva.Path({data:"M35,10 c-6,0 -6,6 0,6 c-6,0 -6,6 0,6 c-6,0 -6,6 0,6 c-6,0 -6,6 0,6 c-6,0 -6,6 0,6", stroke:'#888', strokeWidth:2}));
+            g.add(new Konva.Path({data:"M65,10 c6,0 6,6 0,6 c6,0 6,6 0,6 c6,0 6,6 0,6 c6,0 6,6 0,6 c6,0 6,6 0,6", stroke:'#888', strokeWidth:2}));
             g.add(l([0,20, 35,20])); g.add(l([65,20, 100,20]));
             g.add(l([35,10, 35,mid])); g.add(l([35,30, 35,mid]));
             g.add(l([65,10, 65,mid])); g.add(l([65,30, 65,mid]));
@@ -536,7 +533,6 @@
         return t;
     }
 
-    // [New] Inspector with Probe Buttons & Pulse Duty
     function updateInspector(c) {
         const content = document.getElementById('inspector-content');
         document.getElementById('inspector-panel').classList.add('active');
@@ -652,7 +648,6 @@
         return {map: compactMap, N: matrixIdx};
     }
     
-    // [Probe Functions]
     function addProbe(type, target, label) {
         if(activeProbes.find(p => p.type === type && p.target === target)) return;
         const color = probeColors[activeProbes.length % probeColors.length];
@@ -688,7 +683,7 @@
         const vOff=N, tOff=vOff+Vs.length;
         
         components.forEach(c=>{
-            if(c.type==='D') return; // Steady State ignores nonlinear? approximation needed.
+            if(c.type==='D') return; 
             let n1, n2;
             if(c.rotation === 90 || c.rotation === 270) { n1 = map[c.nL]; n2 = -1; } 
             else { n1 = map[c.nL]; n2 = map[c.nR]; }
@@ -756,7 +751,6 @@
     function addCustomFormula() { const inp = document.getElementById('formula-inp'); const val = inp.value.trim(); if(!val) return; customFormulas.push(val); inp.value = ''; if(steadyResults) runSteady(); }
     function removeCustomFormula(idx) { customFormulas.splice(idx, 1); runSteady(); }
 
-    // [Updated] Transient Engine with Diode & Waveforms & OPAMP
     async function runTransient() {
         const s=getSetup(); if(!s)return; const {map,N}=s;
         const tMax_ms = parseFloat(document.getElementById('tMax').value);
@@ -842,14 +836,10 @@
                 if(c.type === 'OPAMP') {
                     const np = map[c.nR]; const nm = map[c.nL]; // + input, - input
                     const nOut = map[Math.round((c.nL+c.nR)/2)];
-                    // Fix Output node connection constraint override (OPAMP output is single node)
-                    // The standard VS stamp connects n1-n2. For OPAMP n1=nOut, n2=GND usually or just nOut.
-                    // Here we used standard VS logic where n1/n2 are c.nL/nR. But OPAMP wire logic uses Center.
-                    // Let's correct matrix for OPAMP:
-                    // Clear the standard VS rows we just added
+                    
+                    // Reset matrix rows
                     if(n2>=0){A.set([n2,idx],0);A.set([idx,n2],0);} if(n1>=0){A.set([n1,idx],0);A.set([idx,n1],0);}
                     
-                    // Add correct stamp: V(nOut) - Gain*(Vp - Vm) = 0
                     if(nOut>=0) { A.set([nOut,idx],1); A.set([idx,nOut],1); }
                     const gain = c.val;
                     if(np>=0) A.set([idx, np], A.get([idx, np]) - gain);
@@ -928,7 +918,6 @@
         updateFFTSources();
     }
 
-    // [New] Draw Only Active Probes
     function drawTransientChart(times, vData, N, map) {
         const ctx = document.getElementById('transientChart').getContext('2d');
         if(myChart) myChart.destroy();
@@ -966,6 +955,136 @@
             }
         });
     }
+
+    function stopSimulation(){ abortSim=true; document.getElementById('progress-overlay').style.display='none'; }
+
+    const SimpleFFT = {
+        reverseBits: function(x, n) {
+            let result = 0;
+            for (let i = 0; i < n; i++) { result = (result << 1) | (x & 1); x >>= 1; }
+            return result;
+        },
+        fft: function(data) {
+            const N = data.length; const levels = Math.log2(N);
+            for (let i = 0; i < N; i++) {
+                const rev = this.reverseBits(i, levels);
+                if (rev > i) { const temp = data[i]; data[i] = data[rev]; data[rev] = temp; }
+            }
+            for (let size = 2; size <= N; size *= 2) {
+                const halfSize = size / 2; const step = 2 * Math.PI / size;
+                for (let i = 0; i < N; i += size) {
+                    for (let j = 0; j < halfSize; j++) {
+                        const k = i + j; const angle = -step * j; const cos = Math.cos(angle); const sin = Math.sin(angle);
+                        const tr = data[k + halfSize].re * cos - data[k + halfSize].im * sin;
+                        const ti = data[k + halfSize].re * sin + data[k + halfSize].im * cos;
+                        data[k + halfSize].re = data[k].re - tr; data[k + halfSize].im = data[k].im - ti;
+                        data[k].re += tr; data[k].im += ti;
+                    }
+                }
+            }
+            return data;
+        },
+        calculateSpectrum: function(signalData, dt) {
+            const rawN = signalData.length; if(rawN === 0) return [];
+            let n = 1; while (n < rawN) n *= 2;
+            const input = new Array(n);
+            for (let i = 0; i < n; i++) {
+                if (i < rawN) { const windowVal = 0.5 * (1 - Math.cos((2 * Math.PI * i) / (rawN - 1))); input[i] = { re: signalData[i] * windowVal, im: 0 }; }
+                else { input[i] = { re: 0, im: 0 }; }
+            }
+            this.fft(input);
+            const sampleRate = 1.0 / dt; const spectrum = []; const scale = 2.0 / rawN * 2.0; 
+            for (let i = 0; i < n / 2; i++) {
+                let mag = Math.sqrt(input[i].re ** 2 + input[i].im ** 2) * scale;
+                if (i === 0) mag /= 2; spectrum.push({ x: i * sampleRate / n, y: mag });
+            }
+            return spectrum;
+        }
+    };
+
+    function updateFFTSources() {
+        const sel = document.getElementById('fft-src'); sel.innerHTML = "";
+        if(!lastSimResult) return;
+        const { map, N } = lastSimResult; const invMap = {}; Object.keys(map).forEach(k => { if(map[k] >= 0) invMap[map[k]] = k; });
+        for(let i=0; i<N; i++) { const opt = document.createElement('option'); opt.value = `v:${i}`; opt.text = `V(N${invMap[i]})`; sel.appendChild(opt); }
+        if(lastSimResult.resI && lastSimResult.resI.length > 0) {
+            components.forEach((c, idx) => { if(['R','L','C','TX'].includes(c.type) || c.type.includes('V') || c.type.includes('I')) { const opt = document.createElement('option'); opt.value = `i:${idx}`; opt.text = `I(${c.name})`; sel.appendChild(opt); } });
+        }
+        if(sel.options.length > 0) performFFT();
+    }
+
+    function performFFT() {
+        const placeholder = document.getElementById('fft-placeholder');
+        if(!lastSimResult || !lastSimResult.resV) { placeholder.style.display = 'block'; if(fftChart) fftChart.clear(); return; }
+        const selVal = document.getElementById('fft-src').value; if(!selVal) return;
+        placeholder.style.display = 'none';
+        const { dt, resV, resI } = lastSimResult;
+        const [type, idxStr] = selVal.split(':'); const idx = parseInt(idxStr);
+        let data; if (type === 'v') data = resV[idx]; else if (type === 'i') data = resI[idx];
+        if (!data || data.length === 0) return;
+        let fMin = parseFloat(document.getElementById('fft-min').value) || 0; let fMax = parseFloat(document.getElementById('fft-max').value) || 1000;
+        if(fMin < 0) fMin = 0; if(fMax <= fMin) fMax = fMin + 1000;
+        let spectrum = SimpleFFT.calculateSpectrum(data, dt);
+        spectrum = spectrum.filter(s => s.x >= fMin && s.x <= fMax);
+        const sorted = [...spectrum].sort((a,b) => b.y - a.y).slice(0, 10);
+        const tbody = document.getElementById('peak-tbody'); tbody.innerHTML = "";
+        sorted.forEach((p, i) => {
+            const tr = document.createElement('tr'); tr.innerHTML = `<td>${i+1}</td><td>${p.x.toFixed(1)}</td><td>${formatEng(p.y)}</td>`;
+            tr.onclick = () => highlightBar(p.x); tr.id = `peak-row-${Math.round(p.x)}`; tbody.appendChild(tr);
+        });
+        const maxPoints = 500; let displaySpec = spectrum;
+        if(spectrum.length > maxPoints) { const step = Math.ceil(spectrum.length / maxPoints); displaySpec = spectrum.filter((_, i) => i % step === 0); }
+        const labels = displaySpec.map(s => s.x.toFixed(1)); const mags = displaySpec.map(s => s.y);
+        const ctx = document.getElementById('fftChart').getContext('2d'); if(fftChart) fftChart.destroy();
+        const gridColor = isDarkMode ? '#333' : '#ddd'; const textColor = isDarkMode ? '#aaa' : '#666';
+        fftChart = new Chart(ctx, {
+            type: 'bar', data: { labels: labels, datasets: [{ label: 'Magnitude', data: mags, backgroundColor: (ctx) => { if(!selectedFreq) return '#862e9c'; const val = parseFloat(ctx.chart.data.labels[ctx.dataIndex]); return Math.abs(val - selectedFreq) < (fMax-fMin)*0.01 ? '#e03131' : '#862e9c'; }, barPercentage: 1.0, categoryPercentage: 1.0 }] },
+            options: { responsive: true, maintainAspectRatio: false, animation: false, scales: { x: { title: { display: true, text: 'Freq (Hz)', color: textColor }, ticks: { maxTicksLimit: 8, color: textColor }, grid: { color: gridColor } }, y: { title: { display: true, text: 'Mag', color: textColor }, ticks: { color: textColor }, grid: { color: gridColor } } }, onClick: (e, els) => { if(els.length > 0) { const idx = els[0].index; const freq = parseFloat(labels[idx]); highlightBar(freq); } }, plugins: { tooltip: { callbacks: { label: (ctx) => `Mag: ${formatEng(ctx.raw)}` }, intersect: false, mode: 'nearest' }, legend: { display: false } } }
+        });
+    }
+
+    function highlightBar(freq) {
+        selectedFreq = typeof freq === 'number' ? freq : parseFloat(freq);
+        if(fftChart) fftChart.update();
+        document.querySelectorAll('.peak-table tr').forEach(tr => tr.classList.remove('peak-row-active'));
+        const rowId = `peak-row-${Math.round(selectedFreq)}`;
+        const row = document.getElementById(rowId);
+        if(row) { row.classList.add('peak-row-active'); row.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+    }
+
+    // [Utility Functions Restored]
+    function formatEng(v) { if (v === 0) return "0"; if (Math.abs(v) < 1e-15) return "0"; const p = Math.floor(Math.log10(Math.abs(v)) / 3); const prefixes = ['p', 'n', 'u', 'm', '', 'k', 'M', 'G']; const s = prefixes[p + 4]; if (s === undefined) return v.toExponential(2); return (v / Math.pow(10, p * 3)).toFixed(2) + s; }
+    function parseUnit(s){if(!s)return NaN;s=s.toString();const m=s.match(/^([\d\.]+)\s*([a-zA-Z]*)$/);if(!m)return parseFloat(s);const v=parseFloat(m[1]),u=m[2],k={'p':1e-12,'n':1e-9,'u':1e-6,'m':1e-3,'k':1e3,'M':1e6,'G':1e9};return v*(k[u]||1);}
+    function formatUnit(v,u){if(Math.abs(v)<1e-15)return "0"+u;const a=Math.abs(v),r=[{v:1e9,s:'G'},{v:1e6,s:'M'},{v:1e3,s:'k'},{v:1,s:''},{v:1e-3,s:'m'},{v:1e-6,s:'u'},{v:1e-9,s:'n'},{v:1e-12,s:'p'}];for(let x of r)if(a>=x.v*0.9)return parseFloat((v/x.v).toFixed(2))+x.s+u;return v.toExponential(1)+u;}
+    
+    function pushHistory() { 
+        if(historyStep < historyStack.length - 1) historyStack = historyStack.slice(0, historyStep + 1); 
+        historyStack.push(JSON.stringify({railCount,groundRails:Array.from(groundRails),components:components.map(c=>({type:c.type,val:c.val,freq:c.freq,phase:c.phase,unit:c.unit,nL:c.nL,nR:c.nR,ratio:c.ratio,name:c.name,uiX:c.group.x(),uiY:c.group.y(),duty:c.duty,inputP:c.inputP,inputM:c.inputM}))})); 
+        if(historyStack.length > MAX_HISTORY) historyStack.shift(); else historyStep++; 
+    }
+    function undo() { if(historyStep > 0) { historyStep--; restoreState(historyStack[historyStep]); } }
+    function redo() { if(historyStep < historyStack.length - 1) { historyStep++; restoreState(historyStack[historyStep]); } }
+    
+    function restoreState(json) { 
+        const d = JSON.parse(json); 
+        components.forEach(c=>{c.group.destroy();c.lineL.destroy();c.lineR.destroy();if(c.lineOut)c.lineOut.destroy();}); 
+        components=[]; railCount = d.railCount; groundRails = new Set(d.groundRails); idCnt={R:0,L:0,C:0,V:0,I:0,T:0}; 
+        d.components.forEach(c => { spawn(c.type, c); }); drawGrid(); 
+    }
+    
+    function saveCircuit(){ 
+        const d={railCount,groundRails:Array.from(groundRails),components:components.map(c=>({type:c.type,val:c.val,freq:c.freq,phase:c.phase,unit:c.unit,nL:c.nL,nR:c.nR,ratio:c.ratio,name:c.name,uiX:c.group.x(),uiY:c.group.y(),duty:c.duty,inputP:c.inputP,inputM:c.inputM}))}; 
+        const b=new Blob([JSON.stringify(d)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='circuit.json'; a.click(); 
+    }
+    function loadCircuit(input){ const f=input.files[0]; if(!f) return; const r=new FileReader(); r.onload=(e)=>{ try{ const d=JSON.parse(e.target.result); resetAll(); railCount=d.railCount||6; groundRails=new Set(d.groundRails||[1]); d.components.forEach(c=>spawn(c.type,c)); drawGrid(); pushHistory(); }catch(err){alert("Error");} }; r.readAsText(f); input.value=''; }
+    function resetAll(){ 
+        components.forEach(c=>{c.group.destroy();c.lineL.destroy();c.lineR.destroy();if(c.lineOut)c.lineOut.destroy();}); 
+        components=[]; idCnt={R:0,L:0,C:0,V:0,I:0,T:0}; railCount=6; groundRails=new Set([1]); activeProbes=[]; updateProbeUI();
+        drawGrid(); if(myChart)myChart.destroy(); if(fftChart)fftChart.destroy(); pushHistory(); 
+    }
+    function copyComponent(){ if(selectedComp) clipboard = {type:selectedComp.type, val:selectedComp.val, freq:selectedComp.freq, phase:selectedComp.phase, unit:selectedComp.unit, ratio:selectedComp.ratio, duty:selectedComp.duty}; }
+    function pasteComponent(){ if(clipboard) spawn(clipboard.type, {...clipboard, uiX:stage.width()/2, uiY:stage.height()/2}); }
+    function exportCSV(){ if(!lastSimResult) return alert("No Data"); let csv="Time(s)"; for(let i=0;i<lastSimResult.N;i++) csv+=`,V(N${i+1})`; csv+="\n"; const {dt, resV} = lastSimResult; for(let i=0; i<resV[0].length; i++){ csv += `${(i*dt).toFixed(6)}`; for(let j=0; j<lastSimResult.N; j++) csv+=`,${resV[j][i]}`; csv+="\n"; } const b=new Blob([csv],{type:'text/csv'}); const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='transient.csv'; a.click(); }
 
     setTimeout(() => { fitStage(); pushHistory(); }, 500);
 </script>
