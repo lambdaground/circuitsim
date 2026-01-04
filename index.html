@@ -163,6 +163,10 @@
                 <span>Transient Analysis</span>
                 <button onclick="exportCSV()" style="width:auto; padding:2px 6px; font-size:10px;">Save CSV</button>
             </div>
+            <div id="probe-list" style="padding: 5px 10px; display:flex; flex-wrap:wrap; gap:5px; border-bottom:1px solid var(--border-color); min-height:30px;">
+                <span style="font-size:11px; color:#666;">Select a component to add probes.</span>
+            </div>
+            
             <div class="canvas-box"><canvas id="transientChart"></canvas></div>
             <div id="progress-overlay">
                 <div style="font-weight:bold;">Simulating...</div>
@@ -303,6 +307,39 @@
         if (rw < 30) rw = 30;
         let compScale = Math.min(1, (rw * 0.9) / 100);
         return { rw, compScale };
+    }// [추가] 프로브 상태 관리
+    let activeProbes = []; // { type: 'V'|'I', target: id/name, label: string, color: string }
+    const probeColors = ['#e03131', '#1971c2', '#2f9e44', '#f08c00', '#9c36b5', '#20c997', '#5f3dc4'];
+
+    function addProbe(type, target, label) {
+        // 중복 방지
+        if(activeProbes.find(p => p.type === type && p.target === target)) return;
+        
+        const color = probeColors[activeProbes.length % probeColors.length];
+        activeProbes.push({ type, target, label, color });
+        updateProbeUI();
+        if(lastSimResult) drawTransientChart(lastSimResult.timeLog, lastSimResult.resV, lastSimResult.N, lastSimResult.map);
+    }
+
+    function removeProbe(index) {
+        activeProbes.splice(index, 1);
+        updateProbeUI();
+        if(lastSimResult) drawTransientChart(lastSimResult.timeLog, lastSimResult.resV, lastSimResult.N, lastSimResult.map);
+    }
+
+    function updateProbeUI() {
+        const list = document.getElementById('probe-list');
+        list.innerHTML = '';
+        if(activeProbes.length === 0) {
+            list.innerHTML = '<span style="font-size:11px; color:#666;">Select component -> Add Probe</span>';
+            return;
+        }
+        activeProbes.forEach((p, i) => {
+            const tag = document.createElement('div');
+            tag.style.cssText = `background:${p.color}22; border:1px solid ${p.color}; color:${p.color}; padding:2px 6px; border-radius:10px; font-size:10px; display:flex; align-items:center; gap:4px; cursor:default;`;
+            tag.innerHTML = `<b>${p.type}</b> ${p.label} <span onclick="removeProbe(${i})" style="cursor:pointer; font-weight:bold;">×</span>`;
+            list.appendChild(tag);
+        });
     }
     function getGridX(idx, rw) { return START_X + (idx - 1) * rw; }
 
@@ -529,41 +566,41 @@
             leftCol += `<div class="insp-row"><label>Turns Ratio (1:N)</label><input type="number" id="insp-ratio" value="${c.ratio}" step="0.1"></div>`;
             baseTuneValue = c.ratio; tuningParam = 'ratio';
         } else {
-            // [수정] 일반 값 표시
             leftCol += `<div class="insp-row"><label>Value (${c.unit})</label><input type="text" id="insp-val" value="${formatUnit(c.val, '').replace(/[a-zA-Z]*$/, '')}"></div>`;
             baseTuneValue = c.val; tuningParam = 'val';
 
-            // [수정] AC 및 파형 소스(Square, Triangle, Pulse)에 대한 주파수/위상 표시
-            // 기존: c.type.includes('AC') -> 변경: c.type.includes('V_') || c.type === 'I_AC'
-            // (V_DC는 freq가 없으므로 제외해야 하지만, 간단히 구현하려면 아래처럼 조건 확장)
-            if(c.type.includes('AC') || c.type === 'V_SQU' || c.type === 'V_TRI' || c.type === 'V_PULSE') {
+            if(c.type.includes('V_') || c.type === 'I_AC') {
                 leftCol += `<div class="insp-row"><label>Frequency (Hz)</label><input type="number" id="insp-freq" value="${c.freq}"></div>`;
                 leftCol += `<div class="insp-row"><label>Phase (deg)</label><input type="number" id="insp-phase" value="${c.phase||0}"></div>`;
             }
-
-            // [수정] Pulse 파형일 경우 Duty Cycle 입력창 추가
             if (c.type === 'V_PULSE') {
                 leftCol += `<div class="insp-row"><label>Duty Cycle (%)</label><input type="number" id="insp-duty" value="${c.duty || 50}" min="1" max="99" step="1"></div>`;
             }
         }
         
+        // [수정됨] 회전/삭제 버튼 아래에 프로브 버튼 추가
         leftCol += `<div class="insp-row" style="display:flex; justify-content:space-between; margin-top:5px;">
                     <button class="btn-primary" onclick="rotateComponent()" style="flex:1; margin-right:5px;">↻ Rotate</button>
                     <button onclick="deleteSelected()" class="btn-danger" style="flex:1; margin-left:5px;">Delete</button>
-                  </div></div>`; 
+                  </div>`;
+        
+        // 프로브 버튼 영역
+        leftCol += `<div style="margin-top:10px; border-top:1px dashed #444; padding-top:5px;">
+                        <label style="color:var(--accent-color); margin-bottom:5px;">Add Probe</label>
+                        <div style="display:flex; gap:5px;">
+                            <button onclick="addProbe('V', ${c.nL}, 'N${c.nL}')" style="font-size:11px;">V(N${c.nL})</button>
+                            ${c.nR !== -1 ? `<button onclick="addProbe('V', ${c.nR}, 'N${c.nR}')" style="font-size:11px;">V(N${c.nR})</button>` : ''}
+                            <button onclick="addProbe('I', '${c.name}', '${c.name}')" style="font-size:11px;">I(${c.name})</button>
+                        </div>
+                    </div></div>`; 
 
-        // [수정] 튜닝 라디오 버튼 생성 로직
         let radioHTML = '';
-        if (c.type.includes('AC') || c.type === 'V_SQU' || c.type === 'V_TRI' || c.type === 'V_PULSE') {
+        if (c.type.includes('V_') || c.type === 'I_AC') {
             radioHTML = `<div class="radio-group">
                 <label><input type="radio" name="tuneTarget" value="val" checked onchange="setTuneTarget('val')"> Mag</label>
                 <label><input type="radio" name="tuneTarget" value="freq" onchange="setTuneTarget('freq')"> Freq</label>
                 <label><input type="radio" name="tuneTarget" value="phase" onchange="setTuneTarget('phase')"> Phase</label>`;
-            
-            // [수정] Pulse일 때 Duty 튜닝 옵션 추가
-            if (c.type === 'V_PULSE') {
-                radioHTML += `<label><input type="radio" name="tuneTarget" value="duty" onchange="setTuneTarget('duty')"> Duty</label>`;
-            }
+            if (c.type === 'V_PULSE') radioHTML += `<label><input type="radio" name="tuneTarget" value="duty" onchange="setTuneTarget('duty')"> Duty</label>`;
             radioHTML += `</div>`;
         }
         
@@ -571,17 +608,11 @@
         
         content.innerHTML = leftCol + rightCol;
         
-        // [수정] 값 변경 핸들러 (setVal)
+        // 이벤트 핸들러 연결 (기존과 동일)
         const setVal = (k, v) => { 
-            c[k] = v; 
-            // Duty 등은 Label에 바로 표시되지 않을 수 있으나 일관성을 위해 호출
-            c.labelObj.text(getLabel(c)); 
-            
+            c[k] = v; c.labelObj.text(getLabel(c)); 
             if(k === tuningParam) baseTuneValue = v; 
-            compLayer.batchDraw(); 
-            pushHistory(); 
-            runSteady(); // DC/AC 해석 (Pulse는 Steady에서 DC 성분만 보거나 무시됨)
-            // Pulse 등은 과도 응답이 중요하므로 Transient도 갱신되면 좋음 (성능 고려)
+            compLayer.batchDraw(); pushHistory(); runSteady();
             if(['V_SQU', 'V_TRI', 'V_PULSE'].includes(c.type)) runTransient();
         };
 
@@ -589,41 +620,26 @@
         const iRatio = document.getElementById('insp-ratio'); if(iRatio) iRatio.onchange = e => setVal('ratio', parseFloat(e.target.value));
         const iFreq = document.getElementById('insp-freq'); if(iFreq) iFreq.onchange = e => setVal('freq', parseFloat(e.target.value));
         const iPhase = document.getElementById('insp-phase'); if(iPhase) iPhase.onchange = e => setVal('phase', parseFloat(e.target.value));
-        
-        // [수정] Duty 핸들러 연결
         const iDuty = document.getElementById('insp-duty'); if(iDuty) iDuty.onchange = e => setVal('duty', parseFloat(e.target.value));
 
         const slider = document.getElementById('tune-slider');
         const pctLabel = document.getElementById('tune-pct');
-        
         if(slider) {
             slider.oninput = (e) => {
                 const pct = parseInt(e.target.value);
                 pctLabel.innerText = (pct > 0 ? '+' : '') + pct + '%';
-                
-                // [수정] Duty Cycle은 단순히 %를 더하는 방식이 나을 수 있음 (예: 50% + 10% -> 55%가 아니라 60%?)
-                // 여기서는 기존 로직대로 비율 곱셈(base * (1+pct)) 방식을 유지하되, Duty가 100을 넘지 않게 예외처리
                 let newVal = baseTuneValue * (1 + pct/100);
-                
-                if (tuningParam === 'duty') {
-                    if(newVal > 99) newVal = 99;
-                    if(newVal < 1) newVal = 1;
-                }
-
+                if (tuningParam === 'duty') { if(newVal > 99) newVal = 99; if(newVal < 1) newVal = 1; }
                 c[tuningParam] = newVal;
                 
-                // UI 값 업데이트
                 if(tuningParam === 'val') { const el = document.getElementById('insp-val'); if(el) el.value = formatUnit(newVal, '').replace(/[a-zA-Z]*$/, ''); }
                 else if (tuningParam === 'ratio') { const el = document.getElementById('insp-ratio'); if(el) el.value = newVal.toFixed(2); }
                 else if (tuningParam === 'freq') { const el = document.getElementById('insp-freq'); if(el) el.value = newVal.toFixed(2); }
                 else if (tuningParam === 'phase') { const el = document.getElementById('insp-phase'); if(el) el.value = newVal.toFixed(2); }
-                else if (tuningParam === 'duty') { const el = document.getElementById('insp-duty'); if(el) el.value = newVal.toFixed(1); } // [수정] Duty UI 업데이트
+                else if (tuningParam === 'duty') { const el = document.getElementById('insp-duty'); if(el) el.value = newVal.toFixed(1); }
 
-                c.labelObj.text(getLabel(c)); 
-                compLayer.batchDraw(); 
-                runSteady(); // Steady 갱신
+                c.labelObj.text(getLabel(c)); compLayer.batchDraw(); runSteady();
             };
-            // [수정] Transient는 슬라이더를 놓았을 때(onchange) 실행 (성능 문제 방지)
             slider.onchange = (e) => { runTransient(); };
         }
     }
