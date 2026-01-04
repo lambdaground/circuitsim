@@ -127,9 +127,12 @@
         <div class="section-group">
             <h3>SOURCES & PARTS</h3>
             <button onclick="spawn('V_DC')"><span style="color:#e74c3c; font-weight:bold; margin-right:5px;">V</span> DC Voltage</button>
-            <button onclick="spawn('V_AC')"><span style="color:#e74c3c; font-weight:bold; margin-right:5px;">~</span> AC Voltage</button>
+            <button onclick="spawn('V_AC')"><span style="color:#e74c3c; font-weight:bold; margin-right:5px;">~</span> AC Sine</button>
+            <button onclick="spawn('V_SQU')"><span style="font-weight:bold; margin-right:5px;">⎍</span> Square Wave</button>
+            <button onclick="spawn('V_TRI')"><span style="font-weight:bold; margin-right:5px;">⋀</span> Triangle Wave</button>
+            <button onclick="spawn('V_PULSE')"><span style="font-weight:bold; margin-right:5px;">_Π_</span> Pulse</button>
             <button onclick="spawn('I_AC')"><span style="color:#f1c40f; font-weight:bold; margin-right:5px;">I</span> AC Current</button>
-            <button onclick="spawn('TX')">TX - Transformer</button>
+            <button onclick="spawn('TX')">TX - Transformer</button
         </div>
         <div class="section-group">
             <h3>SIMULATION</h3>
@@ -449,26 +452,36 @@
         g.add(new Konva.Rect({ x:0, y:0, width:100, height:40, fill: bgCol, name:'bg', cornerRadius:4 }));
         const l = (p, w=2) => new Konva.Line({points:p, stroke:'#888', strokeWidth:w, lineCap:'round', lineJoin:'round'});
         const mid = 20;
+
         if(type==='R') g.add(l([0,mid, 20,mid, 25,mid-10, 35,mid+10, 45,mid-10, 55,mid+10, 65,mid-10, 75,mid+10, 80,mid, 100,mid]));
         else if(type==='L'){ g.add(new Konva.Path({x:20, y:mid, data:`M0,0 Q7,-15 14,0 Q21,-15 28,0 Q35,-15 42,0 Q49,-15 56,0`, stroke:'#888', strokeWidth:2})); g.add(l([0,mid, 20,mid])); g.add(l([76,mid, 100,mid])); }
         else if(type==='C'){ g.add(l([0,mid, 45,mid])); g.add(l([55,mid, 100,mid])); g.add(l([45,mid-12, 45,mid+12])); g.add(l([55,mid-12, 55,mid+12])); }
-        else if(type.includes('V')){
+        else if(type.includes('V')){ // 전압원 (DC, AC, SQU, TRI, PULSE)
             g.add(l([0,mid, 40,mid])); g.add(l([60,mid, 100,mid]));
-            if(type==='V_DC'){ g.add(l([40,mid-8, 40,mid+8], 2)); g.add(l([60,mid-16, 60,mid+16], 2)); g.add(new Konva.Text({x:65, y:mid-15, text:'+', fontSize:14, fill:'#e74c3c', fontStyle:'bold'})); }
-            else { g.add(new Konva.Circle({x:50, y:mid, radius:15, stroke:'#888', strokeWidth:2})); g.add(new Konva.Path({x:43, y:mid, data:`M0,0 Q3.5,-6 7,0 T14,0`, stroke:'#888', strokeWidth:2})); }
-            g.add(new Konva.Circle({x:50, y:mid, radius:15, stroke:'#888', strokeWidth:2}));
-    
-    // 파형 아이콘 그리기
-    if(type === 'V_AC') { /* 기존 사인파 */ }
-    else if(type === 'V_SQU') {
-        g.add(new Konva.Line({points:[38,mid+5, 38,mid-5, 50,mid-5, 50,mid+5, 62,mid+5, 62,mid-5], stroke:'#888', strokeWidth:1.5}));
-    }
-    else if(type === 'V_TRI') {
-        g.add(new Konva.Line({points:[38,mid, 44,mid-6, 56,mid+6, 62,mid], stroke:'#888', strokeWidth:1.5}));
-    }
-    else if(type === 'V_PULSE') {
-        g.add(new Konva.Line({points:[38,mid+5, 42,mid+5, 42,mid-5, 48,mid-5, 48,mid+5, 62,mid+5], stroke:'#888', strokeWidth:1.5}));
-    }
+            
+            if(type==='V_DC'){ 
+                g.add(l([40,mid-8, 40,mid+8], 2)); 
+                g.add(l([60,mid-16, 60,mid+16], 2)); 
+                g.add(new Konva.Text({x:65, y:mid-15, text:'+', fontSize:14, fill:'#e74c3c', fontStyle:'bold'})); 
+            }
+            else { 
+                // AC 계열 공통 원 그리기
+                g.add(new Konva.Circle({x:50, y:mid, radius:15, stroke:'#888', strokeWidth:2})); 
+                
+                // 내부에 들어갈 파형 모양 분기
+                if(type === 'V_AC') { 
+                    g.add(new Konva.Path({x:43, y:mid, data:`M0,0 Q3.5,-6 7,0 T14,0`, stroke:'#888', strokeWidth:2})); 
+                }
+                else if(type === 'V_SQU') {
+                    g.add(new Konva.Line({points:[38,mid+5, 38,mid-5, 50,mid-5, 50,mid+5, 62,mid+5, 62,mid-5], stroke:'#888', strokeWidth:1.5}));
+                }
+                else if(type === 'V_TRI') {
+                    g.add(new Konva.Line({points:[38,mid, 44,mid-6, 56,mid+6, 62,mid], stroke:'#888', strokeWidth:1.5}));
+                }
+                else if(type === 'V_PULSE') {
+                    g.add(new Konva.Line({points:[38,mid+5, 42,mid+5, 42,mid-5, 48,mid-5, 48,mid+5, 62,mid+5], stroke:'#888', strokeWidth:1.5}));
+                }
+            }
         }
         else if(type==='I_AC') {
             g.add(l([0,mid, 40,mid])); g.add(l([60,mid, 100,mid]));
