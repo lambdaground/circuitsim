@@ -123,17 +123,25 @@
             <button onclick="spawn('R')">R - Resistor</button>
             <button onclick="spawn('L')">L - Inductor</button>
             <button onclick="spawn('C')">C - Capacitor</button>
+            <button onclick="spawn('TX')">TX - Transformer</button
         </div>
         <div class="section-group">
-            <h3>SOURCES & PARTS</h3>
+            <h3>SOURCES</h3>
             <button onclick="spawn('V_DC')"><span style="color:#e74c3c; font-weight:bold; margin-right:5px;">V</span> DC Voltage</button>
             <button onclick="spawn('V_AC')"><span style="color:#e74c3c; font-weight:bold; margin-right:5px;">~</span> AC Sine</button>
             <button onclick="spawn('V_SQU')"><span style="font-weight:bold; margin-right:5px;">⎍</span> Square Wave</button>
             <button onclick="spawn('V_TRI')"><span style="font-weight:bold; margin-right:5px;">⋀</span> Triangle Wave</button>
             <button onclick="spawn('V_PULSE')"><span style="font-weight:bold; margin-right:5px;">_Π_</span> Pulse</button>
             <button onclick="spawn('I_AC')"><span style="color:#f1c40f; font-weight:bold; margin-right:5px;">I</span> AC Current</button>
-            <button onclick="spawn('TX')">TX - Transformer</button
+                                                   
         </div>
+	<div class="section-group">
+            <h3>COMPONENTS</h3>
+            <button onclick="spawn('D')"><span style="font-weight:bold; margin-right:5px;">⇥</span> Diode</button>
+            <button onclick="spawn('OPAMP')"><span style="font-weight:bold; margin-right:5px;">▷</span> OP-AMP</button>                                                  
+                                                              
+        </div>
+
         <div class="section-group">
             <h3>SIMULATION</h3>
             <div style="display:flex; gap:5px; margin-bottom:5px;">
@@ -407,6 +415,13 @@
                 c.val = 5; c.unit = 'V'; c.freq = 60; c.phase = 0;
                 if(type === 'V_PULSE') c.duty = 50; // 듀티 사이클 (50%)    
             }
+// spawn 함수 내부의 else if 체인에 추가
+else if(type === 'D') { c.val = 0.7; c.unit = 'V'; } // val = 문턱전압
+else if(type === 'OPAMP') { 
+    c.val = 100000; c.unit = 'Gain'; // 개방 루프 이득
+    c.inputP = 0; // 비반전 입력 노드 번호 (기본 GND)
+    c.inputM = 0; // 반전 입력 노드 번호
+}
         }
         const { rw } = getGridMetrics();
         const initX = (c.uiX !== undefined) ? c.uiX : START_X + rw/2;
@@ -520,6 +535,25 @@
                 }
             }
         }
+// drawShape 함수 내부
+// 기존 else if(type.includes('V')) ... 블록 뒤에 추가
+
+else if(type === 'D') {
+    g.add(l([0,mid, 40,mid])); g.add(l([60,mid, 100,mid]));
+    // 화살표 (Anode)
+    g.add(new Konva.Line({points:[40,mid-10, 40,mid+10, 60,mid], fill:'#888', stroke:'#888', strokeWidth:2, closed:true}));
+    // 막대 (Cathode)
+    g.add(l([60,mid-10, 60,mid+10], 3));
+}
+else if(type === 'OPAMP') {
+    // 출력단 선
+    g.add(l([60,mid, 100,mid])); 
+    // 삼각형 본체
+    g.add(new Konva.Line({points:[20,mid-20, 20,mid+20, 60,mid], stroke:'#888', strokeWidth:2, closed:true}));
+    // 입력 표시 (장식용)
+    g.add(new Konva.Text({x:22, y:mid-15, text:'-', fontSize:10, fill:'#888'}));
+    g.add(new Konva.Text({x:22, y:mid+5, text:'+', fontSize:10, fill:'#888'}));
+}
         else if(type==='I_AC') {
             g.add(l([0,mid, 40,mid])); g.add(l([60,mid, 100,mid]));
             g.add(new Konva.Circle({x:50, y:mid, radius:15, stroke:'#888', strokeWidth:2}));
@@ -576,6 +610,21 @@
             if (c.type === 'V_PULSE') {
                 leftCol += `<div class="insp-row"><label>Duty Cycle (%)</label><input type="number" id="insp-duty" value="${c.duty || 50}" min="1" max="99" step="1"></div>`;
             }
+// updateInspector 함수 내부
+// else 블록 안쪽, 값(Value) 표시하는 부분 아래에 추가
+
+if(c.type === 'OPAMP') {
+    leftCol += `<div class="insp-row" style="margin-top:5px; padding-top:5px; border-top:1px dashed #444;">
+        <label style="color:var(--accent-color)">Non-Inv Input (+)</label>
+        <input type="number" id="insp-inpP" value="${c.inputP}" placeholder="Node ID">
+    </div>`;
+    leftCol += `<div class="insp-row">
+        <label style="color:var(--accent-color)">Inverting Input (-)</label>
+        <input type="number" id="insp-inpM" value="${c.inputM}" placeholder="Node ID">
+    </div>`;
+}
+
+parseInt(e.target.value));
         }
         
         // [수정됨] 회전/삭제 버튼 아래에 프로브 버튼 추가
@@ -624,6 +673,11 @@
 
         const slider = document.getElementById('tune-slider');
         const pctLabel = document.getElementById('tune-pct');
+
+
+// setVal 함수 정의 아래쪽에 이벤트 핸들러 추가
+const iInpP = document.getElementById('insp-inpP'); if(iInpP) iInpP.onchange = e => setVal('inputP', parseInt(e.target.value));
+const iInpM = document.getElementById('insp-inpM'); if(iInpM) iInpM.onchange = e => setVal('inputM', 
         if(slider) {
             slider.oninput = (e) => {
                 const pct = parseInt(e.target.value);
@@ -798,39 +852,29 @@
         const pOv=document.getElementById('progress-overlay'), pFill=document.getElementById('p-fill'), pTxt=document.getElementById('status-text');
         if(steps>5000) { pOv.style.display='flex'; pFill.style.width='0%'; pTxt.innerText='Init...'; }
 
-        const Ls=components.filter(c=>c.type==='L'), Vs=components.filter(c=>c.type.includes('V'));
+        // 부품 분류
+        const Ls=components.filter(c=>c.type==='L');
+        const Vs=components.filter(c=>c.type.includes('V') || c.type==='OPAMP'); // OPAMP도 전압원 취급 (VCVS)
         const Is=components.filter(c=>c.type==='I_AC');
-        const Cs=components.filter(c=>c.type==='C'), Ts=components.filter(c=>c.type==='TX');
+        const Cs=components.filter(c=>c.type==='C');
+        const Ts=components.filter(c=>c.type==='TX');
+        const Ds=components.filter(c=>c.type==='D'); // 다이오드
+
+        // 행렬 크기: 노드 N개 + 인덕터 + 전압원(OPAMP포함) + 변압기
         const size=N+Ls.length+Vs.length+Ts.length;
-        let x=math.zeros(size,1); 
-        const c_prev_V=[], c_prev_I=[], l_prev_V=[], l_prev_I=[];
-        Cs.forEach(()=>{c_prev_V.push(0);c_prev_I.push(0)}); Ls.forEach(()=>{l_prev_V.push(0);l_prev_I.push(0)});
-
-        let A=math.zeros(size,size);
+        
+        // 인덱스 오프셋
         const lOff=N, vOff=N+Ls.length, tOff=vOff+Vs.length;
-        const addA=(r,c,v)=>{if(r>=0&&c>=0)A.set([r,c],A.get([r,c])+v)};
 
-        components.forEach(c=>{
-            let n1, n2;
-            if(c.rotation === 90 || c.rotation === 270) { n1 = map[c.nL]; n2 = -1; } 
-            else { n1 = map[c.nL]; n2 = map[c.nR]; }
-
-            if(c.type==='R'){ const g=1/c.val; addA(n1,n1,g); addA(n2,n2,g); addA(n1,n2,-g); addA(n2,n1,-g); }
-            else if(c.type==='C'){ const g=(2*c.val)/dt; addA(n1,n1,g); addA(n2,n2,g); addA(n1,n2,-g); addA(n2,n1,-g); }
-            else if(c.type==='L'){ const idx=lOff+Ls.indexOf(c), r=(2*c.val)/dt; if(n1>=0){A.set([n1,idx],1);A.set([idx,n1],1);} if(n2>=0){A.set([n2,idx],-1);A.set([idx,n2],-1);} A.set([idx,idx],-r); }
-            else if(c.type.includes('V')){ const idx=vOff+Vs.indexOf(c); if(n2>=0){A.set([n2,idx],1);A.set([idx,n2],1);} if(n1>=0){A.set([n1,idx],-1);A.set([idx,n1],-1);} }
-            else if(c.type==='TX'){ 
-                const N_ratio = c.ratio; 
-                const L1_val = 1; 
-                const L2_val = L1_val * N_ratio * N_ratio; 
-                const k = 0.99999; 
-                const M_val = k * Math.sqrt(L1_val * L2_val);
-                const delta = L1_val * L2_val - M_val * M_val;
-                const factor = dt / delta; 
-                const idx=tOff+Ts.indexOf(c); 
-                if(n2>=0){A.set([n2,idx],1);A.set([idx,n2],1);} if(n1>=0){A.set([n1,idx],-c.ratio);A.set([idx,n1],-c.ratio);}
-            }
-        });
+        // 상태 변수 초기화
+        let x=math.zeros(size,1); 
+        const c_prev_V=new Array(Cs.length).fill(0);
+        const c_prev_I=new Array(Cs.length).fill(0);
+        const l_prev_V=new Array(Ls.length).fill(0);
+        const l_prev_I=new Array(Ls.length).fill(0);
+        
+        // 다이오드 상태 (true=ON, false=OFF)
+        const d_state = new Array(Ds.length).fill(false); 
 
         const resV=Array(N).fill(0).map(()=>[]);
         const resI=components.map(()=>[]);
@@ -842,56 +886,121 @@
             const t=s*dt;
             if(steps>5000 && s%chunk===0){ pFill.style.width=`${(s/steps)*100}%`; pTxt.innerText=`${Math.round(s/steps*100)}%`; await new Promise(r=>setTimeout(r,0)); }
 
-            let B=math.zeros(size,1); const addB=(r,v)=>{if(r>=0)B.set([r,0],B.get([r,0])+v)};
+            // [중요] 다이오드 때문에 매 스텝 행렬을 새로 구성해야 함 (비선형 -> 선형화)
+            let A=math.zeros(size,size);
+            let B=math.zeros(size,1);
             
-            Cs.forEach((c,i)=>{
-                let n1, n2; if(c.rotation===90||c.rotation===270){n1=map[c.nL];n2=-1;}else{n1=map[c.nL];n2=map[c.nR];}
-                const G=(2*c.val)/dt; const I_inj=G*c_prev_V[i]+c_prev_I[i]; addB(n1,I_inj); addB(n2,-I_inj);
+            const addA=(r,c,v)=>{if(r>=0&&c>=0)A.set([r,c],A.get([r,c])+v)};
+            const addB=(r,v)=>{if(r>=0)B.set([r,0],B.get([r,0])+v)};
+
+            // 1. 고정 소자 (R, C, L, TX) 행렬 채우기
+            components.forEach(c=>{
+                if(c.type==='D' || c.type==='OPAMP' || c.type.includes('V') || c.type.includes('I')) return; // 별도 처리
+
+                let n1, n2;
+                if(c.rotation===90||c.rotation===270){n1=map[c.nL];n2=-1;}
+                else{n1=map[c.nL];n2=map[c.nR];}
+
+                if(c.type==='R'){ const g=1/c.val; addA(n1,n1,g); addA(n2,n2,g); addA(n1,n2,-g); addA(n2,n1,-g); }
+                else if(c.type==='C'){ 
+                    const idx=Cs.indexOf(c); const g=(2*c.val)/dt; 
+                    addA(n1,n1,g); addA(n2,n2,g); addA(n1,n2,-g); addA(n2,n1,-g);
+                    const I_inj=g*c_prev_V[idx]+c_prev_I[idx]; addB(n1,I_inj); addB(n2,-I_inj);
+                }
+                else if(c.type==='L'){ 
+                    const idx=lOff+Ls.indexOf(c); const r=(2*c.val)/dt; 
+                    if(n1>=0){A.set([n1,idx],1);A.set([idx,n1],1);} 
+                    if(n2>=0){A.set([n2,idx],-1);A.set([idx,n2],-1);} 
+                    A.set([idx,idx],-r);
+                    B.set([idx,0], -l_prev_V[Ls.indexOf(c)] - r*l_prev_I[Ls.indexOf(c)]);
+                }
+                else if(c.type==='TX'){
+                     const idx=tOff+Ts.indexOf(c); 
+                     if(n2>=0){A.set([n2,idx],1);A.set([idx,n2],1);} 
+                     if(n1>=0){A.set([n1,idx],-c.ratio);A.set([idx,n1],-c.ratio);}
+                }
             });
-            Ls.forEach((c,i)=>{const idx=lOff+i, R=(2*c.val)/dt, v_eq = -l_prev_V[i] - R*l_prev_I[i]; B.set([idx,0], v_eq);});
-            
-            Vs.forEach((c,i)=>{
+
+            // 2. 다이오드 (스위치 모델)
+            Ds.forEach((c, i) => {
+                let n1, n2;
+                if(c.rotation===90||c.rotation===270){n1=map[c.nL];n2=-1;} else{n1=map[c.nL];n2=map[c.nR];}
+                
+                // ON 상태: 0.7V 전압원 + 0.1옴 저항 직렬 연결로 모델링
+                // OFF 상태: 100M옴 저항으로 모델링
+                if(d_state[i]) {
+                    const g = 1/0.1; // Ron = 0.1 ohm
+                    addA(n1,n1,g); addA(n2,n2,g); addA(n1,n2,-g); addA(n2,n1,-g);
+                    // 전압원(0.7V) 효과를 전류원으로 변환 (Norton Equivalent): I = V/R = 0.7 / 0.1 = 7A
+                    // Anode -> Cathode 방향 전압강하
+                    const i_src = c.val * g; 
+                    addB(n1, -i_src); addB(n2, i_src);
+                } else {
+                    const g = 1e-8; // Roff = 100 MOhm
+                    addA(n1,n1,g); addA(n2,n2,g); addA(n1,n2,-g); addA(n2,n1,-g);
+                }
+            });
+
+            // 3. 전압원 및 OP-AMP
+            Vs.forEach((c, i) => {
                 const idx = vOff + i;
-    let v = c.val;
-    const omega = 2 * Math.PI * c.freq;
-    const phi = (c.phase || 0) * Math.PI / 180;
-    const theta = omega * t + phi;
-
-    if (c.type === 'V_AC') {
-        v *= Math.sin(theta);
-    } 
-    else if (c.type === 'V_SQU') {
-        // 사각파: sign(sin(theta))
-        v *= Math.sign(Math.sin(theta));
-    } 
-    else if (c.type === 'V_TRI') {
-        // 삼각파: 아크사인 등을 이용하거나 나머지 연산 이용
-        // (2/PI) * asin(sin(theta)) -> -1~1 범위의 삼각파
-        v *= (2 / Math.PI) * Math.asin(Math.sin(theta));
-    } 
-    else if (c.type === 'V_PULSE') {
-        // 펄스파: 듀티 사이클 고려
-        // 주기 T 내에서 현재 위치 확인
-        const period = 1 / c.freq;
-        const localT = (t + (c.phase || 0)/360 * period) % period;
-        const onTime = period * (c.duty / 100);
-        v = (localT < onTime) ? c.val : 0; // 혹은 -val (Unipolar vs Bipolar 선택)
-    }
-    else if (t < 0) v = 0; // DC의 경우
-
-    B.set([idx, 0], v);
+                let n1, n2;
+                if(c.rotation===90||c.rotation===270){n1=map[c.nL];n2=-1;} else{n1=map[c.nL];n2=map[c.nR];}
                 
+                // MNA Stamp for Voltage Source
+                if(n2>=0){A.set([n2,idx],1);A.set([idx,n2],1);} 
+                if(n1>=0){A.set([n1,idx],-1);A.set([idx,n1],-1);}
+
+                if(c.type === 'OPAMP') {
+                    // VCVS 모델: V_out = Gain * (V_plus - V_minus)
+                    // 식 변형: V_out - Gain*V_plus + Gain*V_minus = 0
+                    // V_out은 (n1 - n2) 전압임.
+                    // n1, n2는 출력단 노드.
+                    // 제어 노드 매핑
+                    const np = map[c.inputP]; // Non-Inv (+)
+                    const nm = map[c.inputM]; // Inv (-)
+                    const gain = c.val;
+
+                    // 행렬의 마지막 행(전압원 제약식)에 Gain 항 추가
+                    if(np>=0) A.set([idx, np], A.get([idx, np]) - gain);
+                    if(nm>=0) A.set([idx, nm], A.get([idx, nm]) + gain);
+                    
+                    B.set([idx, 0], 0); // Offset 전압 0
+                } else {
+                    // 일반 전압원
+                    let v = c.val;
+                    const omega = 2 * Math.PI * c.freq;
+                    const phi = (c.phase || 0) * Math.PI / 180;
+                    const theta = omega * t + phi;
+
+                    if (c.type === 'V_AC') v *= Math.sin(theta);
+                    else if (c.type === 'V_SQU') v *= Math.sign(Math.sin(theta));
+                    else if (c.type === 'V_TRI') v *= (2/Math.PI)*Math.asin(Math.sin(theta));
+                    else if (c.type === 'V_PULSE') {
+                         const period = 1/c.freq; const localT=(t+(c.phase||0)/360*period)%period;
+                         v = (localT < period*(c.duty/100)) ? c.val : 0;
+                    }
+                    else if (t < 0) v = 0;
+                    B.set([idx, 0], v);
+                }
             });
-            Is.forEach((c)=>{
-                let n1, n2; if(c.rotation===90||c.rotation===270){n1=map[c.nL];n2=-1;}else{n1=map[c.nL];n2=map[c.nR];}
-                let val = c.val * Math.sin(2*Math.PI*c.freq*t + (c.phase||0)*Math.PI/180);
-                if(n1>=0) B.set([n1,0], B.get([n1,0]) + val);
-                if(n2>=0) B.set([n2,0], B.get([n2,0]) - val);
+
+            // 4. 전류원
+            Is.forEach(c => {
+                 let n1, n2; if(c.rotation===90||c.rotation===270){n1=map[c.nL];n2=-1;}else{n1=map[c.nL];n2=map[c.nR];}
+                 const val = c.val * Math.sin(2*Math.PI*c.freq*t + (c.phase||0)*Math.PI/180);
+                 addB(n1, val); addB(n2, -val);
             });
-            
+
             try{
+                // Solver
                 x=math.lusolve(A,B);
-                
+
+                // 결과 저장 및 상태 업데이트
+                timeLog.push(t);
+                for(let i=0;i<N;i++) resV[i].push(x.get([i,0]));
+
+                // Capacitor & Inductor Update
                 Cs.forEach((c,i)=>{
                     let n1, n2; if(c.rotation===90||c.rotation===270){n1=map[c.nL];n2=-1;}else{n1=map[c.nL];n2=map[c.nR];}
                     const v1=n1>=0?x.get([n1,0]):0; const v2=n2>=0?x.get([n2,0]):0;
@@ -903,29 +1012,45 @@
                     let n1, n2; if(c.rotation===90||c.rotation===270){n1=map[c.nL];n2=-1;}else{n1=map[c.nL];n2=map[c.nR];}
                     const i_new=x.get([lOff+i,0]);
                     const v1=n1>=0?x.get([n1,0]):0; const v2=n2>=0?x.get([n2,0]):0;
-                    l_prev_I[i]=i_new; l_prev_V[i]=v1-v2;
+                    l_prev_V[i]=v1-v2; l_prev_I[i]=i_new;
                 });
-                timeLog.push(t); 
-                for(let i=0;i<N;i++) resV[i].push(x.get([i,0])); 
 
+                // Diode 상태 업데이트 (다음 스텝을 위한 예측)
+                Ds.forEach((c, i) => {
+                    let n1, n2; if(c.rotation===90||c.rotation===270){n1=map[c.nL];n2=-1;} else{n1=map[c.nL];n2=map[c.nR];}
+                    const v1=n1>=0?x.get([n1,0]):0; const v2=n2>=0?x.get([n2,0]):0;
+                    const v_diode = v1 - v2;
+                    // 문턱전압(0.7V)보다 크면 ON, 아니면 OFF
+                    d_state[i] = (v_diode > c.val); 
+                });
+
+                // 전류 결과 저장 (프로브용)
                 components.forEach((c, cIdx) => {
+                    // 간략화: 실제 전류 계산 로직 (기존과 유사하지만 다이오드/OPAMP 추가)
                     let curr = 0;
-                    let n1, n2; if(c.rotation===90||c.rotation===270){n1=map[c.nL];n2=-1;}else{n1=map[c.nL];n2=map[c.nR];}
-                    const n1Val = n1>=0 ? x.get([n1,0]) : 0;
-                    const n2Val = n2>=0 ? x.get([n2,0]) : 0;
-
-                    if(c.type === 'R') { curr = (n1Val - n2Val) / c.val; }
-                    else if(c.type === 'C') { curr = c_prev_I[Cs.indexOf(c)]; }
+                    if(c.type.includes('V') || c.type === 'OPAMP') { curr = x.get([vOff + Vs.indexOf(c), 0]); }
                     else if(c.type === 'L') { curr = l_prev_I[Ls.indexOf(c)]; }
-                    else if(c.type.includes('V')) { curr = x.get([vOff + Vs.indexOf(c), 0]); }
-                    else if(c.type === 'I_AC') { curr = c.val * Math.sin(2*Math.PI*c.freq*t + (c.phase||0)*Math.PI/180); }
-                    else if(c.type === 'TX') { curr = x.get([tOff + Ts.indexOf(c), 0]); }
+                    else if(c.type === 'C') { curr = c_prev_I[Cs.indexOf(c)]; }
+                    else if(c.type === 'R') { 
+                        let n1,n2; if(c.rotation===90||c.rotation===270){n1=map[c.nL];n2=-1;}else{n1=map[c.nL];n2=map[c.nR];}
+                        const v1=n1>=0?x.get([n1,0]):0; const v2=n2>=0?x.get([n2,0]):0;
+                        curr = (v1-v2)/c.val;
+                    }
+                    else if(c.type === 'D') {
+                        // 다이오드 전류: ON이면 (V-0.7)/0.1, OFF면 V/100M
+                        let n1,n2; if(c.rotation===90||c.rotation===270){n1=map[c.nL];n2=-1;}else{n1=map[c.nL];n2=map[c.nR];}
+                        const v1=n1>=0?x.get([n1,0]):0; const v2=n2>=0?x.get([n2,0]):0;
+                        const v=v1-v2;
+                        if(v > c.val) curr = (v - c.val) / 0.1;
+                        else curr = v / 1e8;
+                    }
                     resI[cIdx].push(curr);
                 });
+
             } catch(e){ console.error(e); break; }
         }
         pOv.style.display='none';
-        lastSimResult = { dt, resV, resI, N, map, timeLog }; // <-- [수정] timeLog 추가 필수!
+        lastSimResult = { dt, resV, resI, N, map, timeLog };
         drawTransientChart(timeLog, resV, N, map);
         updateFFTSources();
     }
