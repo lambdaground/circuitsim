@@ -3,97 +3,110 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>General CirSim v.1.5 (Precision Fixed)</title>
+    <title>General CirSim v.1.1</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
     <script src="https://unpkg.com/konva@9.2.0/konva.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
-        /* 테마 색상 변수 */
-        :root { 
-            --bg-color: #1e1e1e; 
-            --panel-color: #252526; 
-            --text-color: #d4d4d4; 
-            --accent-color: #007acc; 
-            --border-color: #3e3e42; 
-            --canvas-bg: #121212; 
-            --input-bg: #333; 
+        :root { --bg-color: #1e1e1e; --panel-color: #252526; --text-color: #d4d4d4; --accent-color: #007acc; --border-color: #3e3e42; --canvas-bg: #121212; --input-bg: #333; }
+        body.light-mode { --bg-color: #f3f3f3; --panel-color: #ffffff; --text-color: #333333; --accent-color: #007acc; --border-color: #cccccc; --canvas-bg: #ffffff; --input-bg: #fff; }
+        
+        /* [Layout Core Fix] */
+        body { margin: 0; padding: 0; background-color: var(--bg-color); color: var(--text-color); font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; overflow: hidden; display: flex; height: 100vh; width: 100vw; }
+        
+        #left-col { flex: 0 0 260px; background-color: var(--panel-color); border-right: 1px solid var(--border-color); display: flex; flex-direction: column; padding: 15px; box-sizing: border-box; z-index: 20; overflow-y: auto; }
+        
+        #main-grid { 
+            flex: 1; 
+            display: grid; 
+            grid-template-columns: 1fr 1fr; 
+            grid-template-rows: 1fr 1fr; /* 50% 50% 대신 1fr을 사용하여 유연하게 배분 */
+            height: 100vh; 
+            min-width: 0; 
+            overflow: hidden;
         }
-        body.light-mode { 
-            --bg-color: #ffffff; 
-            --panel-color: #f3f3f3; 
-            --text-color: #000000; 
-            --accent-color: #005a9e; 
-            --border-color: #cccccc; 
-            --canvas-bg: #ffffff; 
-            --input-bg: #fff; 
-        }
+
+        .quadrant { position: relative; border: 1px solid var(--border-color); background-color: var(--panel-color); overflow: hidden; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
         
-        body { margin: 0; padding: 0; background-color: var(--bg-color); color: var(--text-color); font-family: 'Segoe UI', sans-serif; overflow: hidden; display: flex; height: 100vh; width: 100vw; transition: background 0.3s, color 0.3s; }
-        
-        /* 레이아웃 */
-        #left-col { flex: 0 0 260px; background-color: var(--panel-color); border-right: 1px solid var(--border-color); display: flex; flex-direction: column; padding: 10px; box-sizing: border-box; overflow-y: auto; z-index: 10; }
-        #main-grid { flex: 1; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 55% 45%; height: 100vh; min-width: 0; }
-        
-        .quadrant { position: relative; border: 1px solid var(--border-color); background-color: var(--panel-color); overflow: hidden; display: flex; flex-direction: column; }
+        /* Grid Positioning */
         #quad-circuit { grid-column: 1 / 2; grid-row: 1 / 2; background-color: var(--canvas-bg); cursor: grab; }
         #quad-circuit:active { cursor: grabbing; }
-        #quad-transient { grid-column: 2 / 3; grid-row: 1 / 2; padding: 5px; }
-        #quad-inspector { grid-column: 1 / 2; grid-row: 2 / 3; padding: 0; display:flex; flex-direction:column; } 
-        #quad-fft { grid-column: 2 / 3; grid-row: 2 / 3; padding: 5px; }
+        #quad-transient { grid-column: 2 / 3; grid-row: 1 / 2; padding: 10px; }
+        #quad-inspector { grid-column: 1 / 2; grid-row: 2 / 3; padding: 0; display:flex; flex-direction:column; overflow:hidden; } 
+        #quad-fft { grid-column: 2 / 3; grid-row: 2 / 3; padding: 10px; }
         
-        #canvas-container { flex: 1; width: 100%; height: 100%; overflow: hidden; }
-        .canvas-box { flex: 1; position: relative; width: 100%; height: 100%; overflow: hidden; }
+        #canvas-container { flex: 1; width: 100%; height: 100%; overflow: hidden; position: relative; }
+        .canvas-box { flex: 1; position: relative; width: 100%; height: 100%; overflow: hidden; min-height: 0; }
+        canvas { display: block; width: 100% !important; height: 100% !important; }
         
-        /* UI 요소 */
-        .panel-title { padding: 8px 12px; font-size: 12px; font-weight: bold; color: var(--text-color); border-bottom: 1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center; background:var(--panel-color); opacity: 0.8;}
-        h3 { margin: 12px 0 6px 0; font-size: 11px; text-transform: uppercase; color: var(--text-color); font-weight: 700; opacity: 0.7; }
+        /* Components */
+        .section-group { display: flex; flex-direction: column; gap: 4px; margin-bottom: 15px; }
+        .panel-title { padding: 8px 12px; font-size: 12px; font-weight: bold; color: #888; border-bottom: 1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center; background:var(--panel-color); flex-shrink: 0;}
+        h3 { margin: 0 0 8px 0; font-size: 12px; text-transform: uppercase; color: #888; font-weight: 600; }
         
-        button { border: 1px solid var(--border-color); padding: 6px 10px; margin-bottom: 4px; cursor: pointer; border-radius: 3px; font-size: 12px; background-color: var(--panel-color); color: var(--text-color); display: flex; align-items: center; width: 100%; transition: all 0.1s; }
+        button { border: 1px solid var(--border-color); padding: 8px 12px; margin-bottom: 0; cursor: pointer; border-radius: 4px; font-size: 13px; background-color: var(--panel-color); color: var(--text-color); display: flex; align-items: center; width: 100%; transition: all 0.2s; }
         button:hover { background-color: var(--accent-color); color: white; border-color: var(--accent-color); }
-        .btn-primary { background-color: var(--accent-color); color: white; border: none; justify-content: center; font-weight: bold; }
+        .btn-primary { background-color: #007acc; color: white; border: none; justify-content: center; font-weight: bold; }
         .btn-danger { background-color: #c0392b !important; color: white !important; border: none !important; justify-content: center; }
+        .btn-apply { background-color: #27ae60; color: white; border: none; justify-content: center; font-weight: bold; margin-top: 5px; }
         
-        input[type="number"], input[type="text"], select { width: 100%; padding: 4px; background: var(--input-bg); border: 1px solid var(--border-color); color: var(--text-color); border-radius: 2px; box-sizing: border-box; font-size: 12px; }
-        label { display: block; margin-bottom: 2px; font-size: 10px; color: var(--text-color); opacity: 0.7; }
+        input[type="number"], input[type="text"], select { width: 100%; padding: 6px; background: var(--input-bg); border: 1px solid var(--border-color); color: var(--text-color); border-radius: 3px; box-sizing: border-box; }
+        label { display: block; margin-bottom: 4px; font-size: 11px; color: #aaa; }
         
-        #inspector-panel { display: none; padding: 10px; flex-direction: column; height: 100%; overflow-y: auto;}
-        #inspector-panel.active { display: flex; animation: fadeIn 0.2s; }
-        #inspector-content { display: flex; flex-direction: row; gap: 10px; width: 100%; }
+        .grid-controls { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+        .grid-btn-group button { width: 30px; padding: 4px; margin: 0; display: inline-block; justify-content: center; }
         
-        .insp-left { flex: 0 0 50%; display: flex; flex-direction: column; }
-        .insp-row { margin-bottom: 5px; }
-        .tuning-wrapper { flex: 1; background: rgba(128, 128, 128, 0.1); padding: 8px; border-radius: 4px; border: 1px solid var(--border-color); display: flex; flex-direction: column; justify-content: center; }
+        /* Inspector */
+        #inspector-panel { display: none; padding: 15px; border-bottom: 1px dashed var(--border-color); flex-direction: column; }
+        #inspector-panel.active { display: flex; animation: fadeIn 0.3s; }
+        #inspector-content { display: flex; flex-direction: row; gap: 15px; width: 100%; }
+        .insp-left { flex: 0 0 45%; display: flex; flex-direction: column; justify-content: flex-start; }
+        .insp-row { margin-bottom: 6px; }
+        .tuning-wrapper { flex: 1; background: rgba(0, 122, 204, 0.1); padding: 10px; border-radius: 4px; border: 1px solid var(--accent-color); display: flex; flex-direction: column; justify-content: center; }
 
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
         
         #progress-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); display:none; justify-content:center; align-items:center; flex-direction:column; z-index:100; color: white; }
-        #p-bar { width:150px; height:4px; background:#444; border-radius:2px; margin-top:5px; overflow:hidden; }
+        #p-bar { width:200px; height:6px; background:#444; border-radius:3px; margin-top:5px; overflow:hidden; }
         #p-fill { width:0%; height:100%; background:var(--accent-color); transition:width 0.1s; }
+        .shortcut-hint { font-size: 10px; color: #666; margin-top: 2px; }
         
-        /* 테이블 스타일 */
+        .tuning-label { display: flex; justify-content: space-between; font-size: 11px; font-weight: bold; margin-bottom: 5px; color: var(--accent-color); }
+        .radio-group { display:flex; gap: 8px; margin-bottom: 8px; font-size: 11px; flex-wrap: wrap; }
+        .radio-group label { display: flex; align-items: center; gap: 4px; cursor: pointer; color: var(--text-color); margin: 0; }
+        input[type=range] { width: 100%; cursor: pointer; }
+        #zoom-tip { position: absolute; bottom: 10px; right: 10px; background: rgba(0,0,0,0.6); color: #ccc; padding: 4px 8px; border-radius: 4px; font-size: 10px; pointer-events: none; }
+        
+        /* Result Tables */
+        #res-content { flex:1; overflow-y: auto; padding:0; }
         .res-table { width: 100%; border-collapse: collapse; font-size: 11px; color: var(--text-color); }
-        .res-table th { background: rgba(128,128,128,0.2); padding: 4px; border: 1px solid var(--border-color); position:sticky; top:0; z-index:2; }
-        .res-table td { padding: 4px; border: 1px solid var(--border-color); text-align: center; }
-        .peak-row-active { background-color: rgba(224, 49, 49, 0.3) !important; font-weight: bold; }
+        .res-table th { background: rgba(128,128,128,0.2); padding: 6px; border: 1px solid var(--border-color); position:sticky; top:0; z-index:2; }
+        .res-table td { padding: 6px; border: 1px solid var(--border-color); text-align: center; }
         
-        /* 캔버스 선명하게 */
-        canvas { image-rendering: -webkit-optimize-contrast; } 
+        .peak-row-active { background-color: rgba(224, 49, 49, 0.2) !important; font-weight: bold; }
+        .peak-table tr:hover { background-color: rgba(128,128,128,0.1); cursor: pointer; }
+        .custom-row { background-color: rgba(0, 122, 204, 0.1); color: var(--accent-color); font-weight:bold; }
+        .btn-del-row { background:none; border:none; cursor:pointer; color:#c0392b; font-weight:bold; padding:0 5px; }
+
+        #custom-calc-area { padding: 8px; background: rgba(0,0,0,0.2); border-bottom: 1px solid var(--border-color); display:flex; gap:5px; align-items:center; }
+        #formula-inp { flex:1; padding:4px; border:1px solid var(--border-color); border-radius:3px; font-size:11px; background:var(--input-bg); color:var(--text-color); }
     </style>
 </head>
 <body>
     <div id="left-col">
-        <h2 style="margin: 0 0 10px 0; font-size: 16px; color:var(--text-color);">General CirSim v.1.5</h2>
-        <div style="font-size:10px; color:var(--text-color); opacity:0.7; margin-bottom:10px;">
-            Ctrl+Z: Undo | Wheel: Zoom<br>Click: Select | Drag: Move
-        </div>
+        <h2 style="margin: 0 0 5px 0; font-size: 18px;">General CirSim v.1.2</h2>
+        <div class="shortcut-hint">Ctrl+Z: Undo | Ctrl+C/V: Copy/Paste</div>
+        <div class="shortcut-hint" style="margin-bottom: 15px;">Wheel: Zoom | Drag: Pan</div>
         
-        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
-            <span style="font-weight:bold; font-size:11px; color: var(--text-color);">NODES (Rails)</span>
-            <div style="display:flex; gap:2px;">
-                <button onclick="updateRailCount(-1)" style="width:24px; padding:2px;">-</button>
-                <button onclick="updateRailCount(1)" style="width:24px; padding:2px;">+</button>
+        <div class="section-group">
+            <div class="grid-controls">
+                <span style="font-weight:bold; font-size:12px; color: #888;">NODES (Rails)</span>
+                <div class="grid-btn-group">
+                    <button onclick="updateRailCount(-1)">-</button>
+                    <button onclick="updateRailCount(1)">+</button>
+                </div>
             </div>
         </div>
 
@@ -102,21 +115,13 @@
             <button onclick="spawn('R')">R - Resistor</button>
             <button onclick="spawn('L')">L - Inductor</button>
             <button onclick="spawn('C')">C - Capacitor</button>
-            <button onclick="spawn('TX')">TX - Transformer</button>
         </div>
         <div class="section-group">
-            <h3>SOURCES</h3>
+            <h3>SOURCES & PARTS</h3>
             <button onclick="spawn('V_DC')"><span style="color:#e74c3c; font-weight:bold; margin-right:5px;">V</span> DC Voltage</button>
-            <button onclick="spawn('V_AC')"><span style="color:#e74c3c; font-weight:bold; margin-right:5px;">~</span> AC Sine</button>
-            <button onclick="spawn('V_SQU')"><span style="font-weight:bold; margin-right:5px;">⎍</span> Square Wave</button>
-            <button onclick="spawn('V_TRI')"><span style="font-weight:bold; margin-right:5px;">⋀</span> Triangle Wave</button>
-            <button onclick="spawn('V_PULSE')"><span style="font-weight:bold; margin-right:5px;">_Π_</span> Pulse</button>
+            <button onclick="spawn('V_AC')"><span style="color:#e74c3c; font-weight:bold; margin-right:5px;">~</span> AC Voltage</button>
             <button onclick="spawn('I_AC')"><span style="color:#f1c40f; font-weight:bold; margin-right:5px;">I</span> AC Current</button>
-        </div>
-        <div class="section-group">
-            <h3>COMPONENTS</h3>
-            <button onclick="spawn('D')"><span style="font-weight:bold; margin-right:5px;">⇥</span> Diode</button>
-            <button onclick="spawn('OPAMP')"><span style="font-weight:bold; margin-right:5px;">▷</span> OP-AMP</button>
+            <button onclick="spawn('TX')">TX - Transformer</button>
         </div>
         <div class="section-group">
             <h3>SIMULATION</h3>
@@ -124,20 +129,20 @@
                 <div style="flex:1"><label>Time (ms)</label><input type="number" id="tMax" value="50"></div>
                 <div style="flex:1"><label>Step (us)</label><input type="number" id="dt" value="10"></div>
             </div>
-            <button onclick="runSteady()" style="color:#f1c40f; border-color:#f1c40f; font-weight:bold;">⚡ Steady State</button>
+            <button onclick="runSteady()" style="color:#f1c40f; border-color:#f1c40f; font-weight:bold;">⚡ Steady State (AC/DC)</button>
             <div style="height:5px"></div>
             <button id="btnRun" class="btn-primary" onclick="runTransient()">▶ RUN TRANSIENT</button>
             <button id="btnStop" class="btn-danger" style="display:none;" onclick="stopSimulation()">⏹ STOP</button>
             <button onclick="toggleTheme()" style="margin-top:10px;">Dark / Bright Mode</button>
-            <hr style="border:0; border-top:1px solid var(--border-color); margin:10px 0;">
-            <button onclick="resetView()" style="opacity:0.8;">⟲ Reset View</button>
+            <hr style="border:0; border-top:1px solid #444; margin:10px 0; width:100%;">
+            <button onclick="resetView()" style="color:#ddd; border-color:#666;">⟲ Reset View</button>
             <button onclick="saveCircuit()" style="color:#27ae60; border-color:#27ae60;">💾 Save Circuit</button>
             <button onclick="document.getElementById('fileInput').click()" style="color:#f39c12; border-color:#f39c12;">📂 Load Circuit</button>
             <input type="file" id="fileInput" style="display:none" onchange="loadCircuit(this)">
             <button onclick="resetAll()" style="color:#e74c3c; border-color:#e74c3c;">🗑 Reset All</button>
         </div>
-    </div> 
-
+    </div>
+    
     <div id="main-grid">
         <div class="quadrant" id="quad-circuit">
             <div id="canvas-container"></div>
@@ -147,9 +152,6 @@
             <div class="panel-title">
                 <span>Transient Analysis</span>
                 <button onclick="exportCSV()" style="width:auto; padding:2px 6px; font-size:10px;">Save CSV</button>
-            </div>
-            <div id="probe-list" style="padding: 5px 10px; display:flex; flex-wrap:wrap; gap:5px; border-bottom:1px solid var(--border-color); min-height:30px; align-items:center;">
-                <span style="font-size:11px; color:var(--text-color); opacity:0.6;">Select a component to add probes.</span>
             </div>
             <div class="canvas-box"><canvas id="transientChart"></canvas></div>
             <div id="progress-overlay">
@@ -161,6 +163,7 @@
         <div class="quadrant" id="quad-inspector">
             <div id="inspector-panel">
                 <div class="panel-title" style="color:var(--accent-color); padding:0; border:none; background:none; margin-bottom:5px;">Selected Component</div>
+                
                 <div id="inspector-content"></div>
             </div>
             
@@ -177,17 +180,18 @@
             </div>
         </div>
         <div class="quadrant" id="quad-fft">
-            <div class="panel-title">FFT Analysis</div>
+            <div class="panel-title">FFT Analysis (Last Transient)</div>
             <div style="display:flex; gap:5px; margin-bottom:5px; padding: 0 5px; align-items:center;">
                 <select id="fft-src" style="padding:2px; font-size:11px; flex:1;"></select>
-                <span style="font-size:11px; color:var(--text-color);">Range:</span>
+                <span style="font-size:11px; color:#888;">Range:</span>
                 <input type="number" id="fft-min" value="0" placeholder="Hz" style="width:45px; font-size:11px;"> 
-                <span style="font-size:11px; color:var(--text-color);">~</span>
+                <span style="font-size:11px; color:#888;">~</span>
                 <input type="number" id="fft-max" value="2000" placeholder="Hz" style="width:50px; font-size:11px;">
                 <button onclick="performFFT()" style="width:auto; padding:2px 8px; font-size:10px;">Update</button>
             </div>
             <div class="canvas-box" style="flex:1; position:relative; min-height: 0;">
                 <canvas id="fftChart"></canvas>
+                <div id="fft-placeholder" style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:#888; font-size:11px; pointer-events:none;">Run Transient Sim first.</div>
             </div>
             <div style="height: 100px; overflow-y:auto; border-top:1px solid var(--border-color);">
                 <table class="res-table peak-table" style="width:100%; margin:0;">
@@ -199,20 +203,13 @@
     </div>
 
 <script>
-    // [Fix: High DPI Support]
-    Konva.pixelRatio = window.devicePixelRatio || 1;
-
     const stage = new Konva.Stage({ container: 'canvas-container', width: 100, height: 100, draggable: true });
     const gridLayer = new Konva.Layer();
     const compLayer = new Konva.Layer();
     stage.add(gridLayer);
     stage.add(compLayer);
     
-    // Grid Size Fixed to 100 to match components exactly
-    const GRID_SIZE = 100;
-    const START_X = 65;
-    let TOP_GND_Y = 60, BOT_GND_Y = 500;
-
+    // Zoom & Pan
     const scaleBy = 1.1;
     stage.on('wheel', (e) => {
         e.evt.preventDefault();
@@ -229,8 +226,11 @@
     let components = [];
     let railCount = 6; 
     let groundRails = new Set([1]); 
-    let idCnt = { R:0, L:0, C:0, V:0, I:0, T:0, D:0, O:0 };
+    let idCnt = { R:0, L:0, C:0, V:0, I:0, T:0 };
     
+    const START_X = 65, BASE_W = 120;
+    let TOP_GND_Y = 60, BOT_GND_Y = 500;
+
     let myChart = null; 
     let fftChart = null;
     let abortSim = false;
@@ -247,9 +247,6 @@
     let clipboard = null;
     const MAX_HISTORY = 20;
 
-    let activeProbes = [];
-    const probeColors = ['#e03131', '#1971c2', '#2f9e44', '#f08c00', '#9c36b5', '#20c997', '#5f3dc4'];
-
     document.addEventListener('keydown', (e) => {
         if((e.ctrlKey||e.metaKey) && e.key === 'z') { e.preventDefault(); undo(); }
         if((e.ctrlKey||e.metaKey) && e.key === 'y') { e.preventDefault(); redo(); }
@@ -257,46 +254,35 @@
         if((e.ctrlKey||e.metaKey) && e.key === 'v') { e.preventDefault(); pasteComponent(); }
     });
 
-    function getThemeColor() {
-        return isDarkMode ? '#ffffff' : '#000000';
-    }
-
     function fitStage() {
         const container = document.getElementById('canvas-container');
-        if (!container) return;
-        stage.width(container.offsetWidth); stage.height(container.offsetHeight);
-        BOT_GND_Y = container.offsetHeight - 40; 
+        if (!container || container.offsetWidth === 0) return;
+        stage.width(container.offsetWidth);
+        stage.height(container.offsetHeight);
+        BOT_GND_Y = stage.height() - 40; 
         drawGrid(); updateAllWires();
     }
+    
     function resetView() { stage.scale({ x: 1, y: 1 }); stage.position({ x: 0, y: 0 }); stage.batchDraw(); }
-    new ResizeObserver(() => { fitStage(); }).observe(document.getElementById('quad-circuit'));
+    
+    // Resize Observer using proper callback
+    const resizeObserver = new ResizeObserver(() => { fitStage(); });
+    const circuitDiv = document.getElementById('quad-circuit');
+    if(circuitDiv) resizeObserver.observe(circuitDiv);
 
     function toggleTheme() {
         isDarkMode = !isDarkMode;
         document.body.classList.toggle('light-mode');
         drawGrid(); updateAllWires(); 
-        const newFill = getThemeColor();
         const newBg = isDarkMode ? '#121212' : '#ffffff';
-        
-        components.forEach(c => { 
-            if(c.shapeObj) { 
-                const bg = c.shapeObj.findOne('.bg'); if(bg) bg.fill(newBg); 
-                // redraw shape logic needed to update strokes, or rely on redraw
-                c.group.destroy();
-                const newGroup = createComponentGroup(c);
-                c.group = newGroup;
-                compLayer.add(newGroup);
-                updateComp(c);
-            } 
-        });
-        if(selectedComp) selectComponent(selectedComp);
+        components.forEach(c => { if(c.shapeObj) { const bg = c.shapeObj.findOne('.bg'); if(bg) bg.fill(newBg); } });
         compLayer.draw(); 
         updateChartsTheme();
     }
 
     function updateChartsTheme() {
-        const c = isDarkMode ? '#aaa' : '#000';
-        const g = isDarkMode ? '#333' : '#ccc';
+        const c = isDarkMode ? '#aaa' : '#666';
+        const g = isDarkMode ? '#333' : '#ddd';
         const applyTheme = (chart) => {
             if(!chart) return;
             chart.options.scales.x.grid.color = g; chart.options.scales.y.grid.color = g;
@@ -307,28 +293,36 @@
         applyTheme(myChart); applyTheme(fftChart);
     }
 
-    function getGridX(idx) { return START_X + (idx - 1) * GRID_SIZE; }
+    function getGridMetrics() {
+        let rw = BASE_W;
+        if (START_X + railCount * rw > stage.width() - 20) rw = (stage.width() - START_X - 20) / railCount;
+        if (rw < 30) rw = 30;
+        let compScale = Math.min(1, (rw * 0.9) / 100);
+        return { rw, compScale };
+    }
+    function getGridX(idx, rw) { return START_X + (idx - 1) * rw; }
 
     function drawGrid() {
         gridLayer.destroyChildren();
-        const lineColor = isDarkMode ? '#ffffff' : '#000000'; 
-        const dashColor = isDarkMode ? '#444' : '#ccc';
-        const textColor = isDarkMode ? '#d4d4d4' : '#000000';
+        const { rw } = getGridMetrics();
+        const gc = isDarkMode ? '#ffffff' : '#aaa'; 
+        const tc = isDarkMode ? '#d4d4d4' : '#555';
+        const la = isDarkMode ? '#343a40' : '#888';
+        const ls = isDarkMode ? '#444444' : '#e0e0e0';
 
-        // Bottom Rail
-        gridLayer.add(new Konva.Line({ points: [START_X - 20, BOT_GND_Y, START_X + railCount * GRID_SIZE, BOT_GND_Y], stroke: lineColor, strokeWidth: 3 }));
-        gridLayer.add(new Konva.Text({ x: START_X - 50, y: BOT_GND_Y - 5, text: '0 (GND)', fontStyle: 'bold', fill: textColor, fontSize:10 }));
+        // Bottom Rail (Strong GND)
+        const bottomColor = isDarkMode ? '#aaa' : '#212529';
+        gridLayer.add(new Konva.Line({ points: [START_X - 20, BOT_GND_Y, START_X + railCount * rw, BOT_GND_Y], stroke: bottomColor, strokeWidth: 4 }));
+        gridLayer.add(new Konva.Text({ x: START_X - 50, y: BOT_GND_Y - 5, text: '0 (GND)', fontStyle: 'bold', fill: tc, fontSize:10 }));
 
         for (let i = 1; i <= railCount; i++) {
-            const x = getGridX(i);
+            const x = getGridX(i, rw);
             const isGnd = groundRails.has(i); 
-            // Vertical Lines
-            const l = new Konva.Line({ points: [x, 40, x, BOT_GND_Y], stroke: isGnd ? lineColor : dashColor, strokeWidth: isGnd ? 2 : 1, dash: isGnd ? [] : [4, 4] });
-            
-            // Node Label
+            // Vertical rails connect to Bottom GND
+            const l = new Konva.Line({ points: [x, 40, x, BOT_GND_Y], stroke: isGnd ? la : ls, strokeWidth: isGnd ? 3 : 1, dash: isGnd ? [] : [4, 4] });
             const grp = new Konva.Group({ x: x, y: 25 });
-            grp.add(new Konva.Rect({ x:-14, y:-10, width:28, height:20, fill: isGnd ? lineColor : (isDarkMode?'#333':'#fff'), stroke: lineColor, cornerRadius:10, strokeWidth: 1.5 }));
-            grp.add(new Konva.Text({ x:-14, y:-5, width:28, align:'center', text: `${i}`, fill: isGnd ? (isDarkMode?'#000':'#fff') : textColor, fontSize:11, fontStyle:'bold' }));
+            grp.add(new Konva.Rect({ x:-14, y:-10, width:28, height:20, fill: isGnd ? '#343a40' : (isDarkMode?'#333':'#fff'), stroke:'#ced4da', cornerRadius:10 }));
+            grp.add(new Konva.Text({ x:-14, y:-5, width:28, align:'center', text: `${i}`, fill: isGnd ? '#fff' : tc, fontSize:10, fontStyle:'bold' }));
             
             grp.on('mouseenter', () => document.body.style.cursor='pointer');
             grp.on('mouseleave', () => document.body.style.cursor='default');
@@ -339,8 +333,10 @@
     }
 
     function updateRailCount(d) {
-        let n = railCount + d; if (n < 2 || n > 30) return;
-        railCount = n; drawGrid(); updateAllWires(); pushHistory();
+        let n = railCount + d;
+        if (n < 2 || n > 30) return;
+        railCount = n;
+        drawGrid(); updateAllWires(); pushHistory();
     }
 
     function updateAllWires() {
@@ -353,81 +349,38 @@
         if(type.includes('V')) prefix = 'V'; 
         else if(type.includes('I')) prefix = 'I'; 
         else if(type === 'TX') prefix = 'T';
-        else if(type === 'D') prefix = 'D'; 
-        else if(type === 'OPAMP') prefix = 'O';
         
-        if(!idCnt[prefix]) idCnt[prefix]=0;
-        idCnt[prefix]++;
-        return prefix + idCnt[prefix];
+        let n = 1;
+        while(components.some(c => c.name === prefix + n)) {
+            n++;
+        }
+        return prefix + n;
     }
 
     function spawn(type, params = null) {
         let c;
         if (params) {
-            c = { ...params }; 
+            c = { ...params }; c.group = null; c.lineL = null; c.lineR = null; c.labelObj = null; c.shapeObj = null;
         } else {
             const name = generateUniqueName(type);
             c = { name, type, val: 0, freq: 60, phase: 0, unit: '', nL: 1, nR: 2, ratio: 1, rotation: 0 };
-            
-            if(type==='R'){ c.val=1000; c.unit='Ω'; } 
-            else if(type==='L'){ c.val=10e-3; c.unit='H'; } 
-            else if(type==='C'){ c.val=100e-6; c.unit='F'; }
-            else if(type==='V_DC'){ c.val=5; c.unit='V'; } 
-            else if(type==='V_AC'){ c.val=220; c.unit='V'; }
-            else if(type==='I_AC'){ c.val=1; c.unit='A'; } 
-            else if(type==='TX'){ c.ratio=1; c.unit=''; }
-            else if(type === 'V_SQU' || type === 'V_TRI' || type === 'V_PULSE'){
-                c.val = 5; c.unit = 'V'; c.freq = 60; c.phase = 0;
-                if(type === 'V_PULSE') c.duty = 50; 
-            }
-            else if(type === 'D') { c.val = 0.7; c.unit = 'V'; }
-            else if(type === 'OPAMP') { 
-                c.val = 100000; c.unit = 'Gain'; 
-                c.nL = 2; c.nR = 4; // Top(-) and Bot(+)
-            }
+            if(type==='R'){ c.val=1000; c.unit='Ω'; } else if(type==='L'){ c.val=10e-3; c.unit='H'; } else if(type==='C'){ c.val=100e-6; c.unit='F'; }
+            else if(type==='V_DC'){ c.val=5; c.unit='V'; } else if(type==='V_AC'){ c.val=220; c.unit='V'; }
+            else if(type==='I_AC'){ c.val=1; c.unit='A'; } else if(type==='TX'){ c.ratio=1; c.unit=''; }
         }
-        
-        // Initial Placement
-        if(c.uiX === undefined) c.uiX = START_X + GRID_SIZE/2;
-        if(c.type === 'OPAMP' && params === null) c.uiX = START_X + (3-1)*GRID_SIZE; 
-
-        const g = createComponentGroup(c);
-        c.group = g;
-        compLayer.add(g);
-        components.push(c);
-        updateComp(c);
-        selectComponent(c);
-        if(!params) pushHistory();
-    }
-
-    function createComponentGroup(c) {
-        const g = new Konva.Group({ x: c.uiX, y: c.uiY || 100, draggable: true });
-        
-        // Lines
-        const color = getThemeColor();
-        const wL = new Konva.Line({ points: [], stroke: color, strokeWidth: 2 });
-        const wR = new Konva.Line({ points: [], stroke: color, strokeWidth: 2 });
-        g.add(wL); g.add(wR);
-        c.lineL = wL; c.lineR = wR;
-
-        if(c.type === 'OPAMP') {
-            const wOut = new Konva.Line({ points: [], stroke: color, strokeWidth: 2 });
-            g.add(wOut); c.lineOut = wOut;
-        }
-
-        const shape = drawShape(c.type); 
-        c.shapeObj = shape; 
-        g.add(shape);
-
-        // Label
-        const tc = getThemeColor();
-        const lblX = c.type === 'OPAMP' ? -60 : -50;
-        const lblY = c.type === 'OPAMP' ? -30 : -45;
-        const lbl = new Konva.Text({ x: lblX, y: lblY, width: 100, align: 'center', fontSize: 11, fontStyle: 'bold', fill: tc, text: getLabel(c) });
+        const { rw } = getGridMetrics();
+        const initX = (c.uiX !== undefined) ? c.uiX : START_X + rw/2;
+        const initY = (c.uiY !== undefined) ? c.uiY : 100;
+        const g = new Konva.Group({ x: initX, y: initY, draggable: true });
+        const wL = new Konva.Line({ points: [], stroke: '#888', strokeWidth: 2, dash:[2,2] });
+        const wR = new Konva.Line({ points: [], stroke: '#888', strokeWidth: 2, dash:[2,2] });
+        compLayer.add(wL); compLayer.add(wR);
+        c.group = g; c.lineL = wL; c.lineR = wR;
+        const shape = drawShape(c.type); c.shapeObj = shape; g.add(shape);
+        const tc = isDarkMode ? '#d4d4d4' : '#333';
+        const lbl = new Konva.Text({ x: -50, y: -45, width: 100, align: 'center', fontSize: 11, fontStyle: 'bold', fill: tc, text: getLabel(c) });
         g.add(lbl); c.labelObj = lbl;
-
-        // Events
-        g.on('mouseenter', () => { document.body.style.cursor = 'pointer'; const bg=shape.findOne('.bg'); if(bg){bg.stroke(varCSS('--accent-color')); bg.strokeWidth(2); compLayer.batchDraw();} });
+        g.on('mouseenter', () => { document.body.style.cursor = 'pointer'; const bg=shape.findOne('.bg'); if(bg){bg.stroke('#007acc'); bg.strokeWidth(2); compLayer.batchDraw();} });
         g.on('mouseleave', () => { document.body.style.cursor = 'default'; if(selectedComp!==c){const bg=shape.findOne('.bg'); if(bg) bg.stroke(null); compLayer.batchDraw();} });
         let clickTimer = null;
         g.on('click', (e) => { e.cancelBubble = true; if(clickTimer) clearTimeout(clickTimer); clickTimer = setTimeout(() => { selectComponent(c); clickTimer = null; }, 200); });
@@ -435,133 +388,84 @@
         g.on('dragmove', () => updateComp(c, true));
         g.on('dragend', () => { 
             c.uiX = g.x(); c.uiY = g.y();
-            const gx = g.x();
+            const {rw} = getGridMetrics(); const gx = g.x();
             
-            if (c.type === 'OPAMP') {
-                let centerIdx = Math.round((gx - START_X) / GRID_SIZE) + 1;
-                if(centerIdx < 2) centerIdx = 2; if(centerIdx > railCount - 1) centerIdx = railCount - 1;
-                c.group.x(START_X + (centerIdx-1)*GRID_SIZE);
-                c.nL = centerIdx - 1; c.nR = centerIdx + 1;
-            }
-            else if (c.rotation === 90 || c.rotation === 270) {
-                 let idx = Math.round((gx - START_X) / GRID_SIZE) + 1;
+            if (c.rotation === 90 || c.rotation === 270) {
+                 // Vertical: Snap to Closest Rail Line Center
+                 let idx = Math.round((gx - START_X) / rw) + 1;
                  if(idx < 1) idx = 1; if(idx > railCount) idx = railCount;
-                 c.group.x(START_X + (idx-1)*GRID_SIZE);
-                 c.nL = idx; c.nR = -1; 
+                 c.group.x(START_X + (idx-1)*rw);
+                 c.nL = idx; c.nR = -1; // -1 = Bottom GND
             } else {
-                 let leftIdx = Math.round((gx - START_X - GRID_SIZE/2) / GRID_SIZE); 
+                 let leftIdx = Math.round((gx - START_X - rw/2) / rw); 
                  let nLeft = leftIdx + 1; if(nLeft < 1) nLeft = 1; if(nLeft >= railCount) nLeft = railCount - 1;
                  c.nL = nLeft; c.nR = nLeft + 1;
             }
             updateComp(c); pushHistory();
             if(selectedComp === c) updateInspector(c);
         });
-
-        return g;
+        
+        components.push(c); compLayer.add(g);
+        updateComp(c); selectComponent(c);
+        if(!params) pushHistory();
     }
 
-    function varCSS(name) { return getComputedStyle(document.body).getPropertyValue(name).trim(); }
-
-    // [Visual Update with Rotation Logic]
     function updateComp(c, dragging=false){
-        const compScale = 1; // 1:1 scale now since GRID_SIZE=100 and Shape=100
+        const {rw, compScale} = getGridMetrics();
         c.group.scale({x: compScale, y: compScale});
+        
         if(c.shapeObj) c.shapeObj.rotation(c.rotation || 0);
 
         if (!dragging) {
-            let cy = c.group.y();
-            if(cy < 60) cy = 60; if(cy > BOT_GND_Y - 20) cy = BOT_GND_Y - 20;
-            c.group.y(cy);
-        }
-        const cy = c.group.y();
-        const cx = c.group.x();
-
-        // Update Wires based on rotation
-        const color = getThemeColor();
-        c.lineL.stroke(color); c.lineR.stroke(color);
-        if(c.lineOut) c.lineOut.stroke(color);
-        c.labelObj.fill(color);
-
-        if (!dragging) {
-            if (c.type === 'OPAMP') {
-                const xTop = START_X + (c.nL-1)*GRID_SIZE;
-                const xBot = START_X + (c.nR-1)*GRID_SIZE;
-                const xMid = (xTop + xBot) / 2; 
-                const topTermY = cy - 15;
-                const botTermY = cy + 15;
-                c.lineL.points([xTop, topTermY, cx - 50, topTermY]);
-                c.lineR.points([xBot, botTermY, cx - 50, botTermY]);
-                if(c.lineOut) c.lineOut.points([cx + 50, cy, xMid, cy]);
-                c.group.x(xMid);
-            }
-            else {
-                const isVertical = (c.rotation === 90 || c.rotation === 270);
-                if (isVertical) {
-                    const railIdx = c.nL; const tx = START_X + (railIdx-1)*GRID_SIZE;
-                    c.group.x(tx);
-                    // Standard Vertical: Pins at Y-50 and Y+50 relative to center
-                    c.lineL.points([tx, cy - 50, tx, 40]); 
-                    c.lineR.points([tx, cy + 50, tx, BOT_GND_Y]);
-                } else {
-                    const xL = START_X + (c.nL-1)*GRID_SIZE; 
-                    const xR = START_X + (c.nR-1)*GRID_SIZE; 
-                    const centreX = (xL + xR) / 2;
-                    c.group.x(centreX);
-                    // Standard Horizontal: Pins at X-50 and X+50
-                    c.lineL.points([xL, cy, cx - 50, cy]); 
-                    c.lineR.points([cx + 50, cy, xR, cy]);
-                }
+            const isVertical = (c.rotation === 90 || c.rotation === 270);
+            if (isVertical) {
+                const railIdx = c.nL; 
+                const tx = START_X + (railIdx-1)*rw;
+                c.group.x(tx);
+                let cy = c.group.y();
+                if(cy < 60) cy = 60; if(cy > BOT_GND_Y - 20) cy = BOT_GND_Y - 20;
+                c.group.y(cy);
+                c.lineL.points([tx, cy - 50*compScale, tx, 40]); 
+                c.lineR.points([tx, cy + 50*compScale, tx, BOT_GND_Y]);
+            } else {
+                const xL = START_X + (c.nL-1)*rw; const xR = START_X + (c.nR-1)*rw; const cx = (xL + xR) / 2;
+                c.group.x(cx);
+                let cy = c.group.y();
+                if(cy < 60) cy = 60; if(cy > BOT_GND_Y - 20) cy = BOT_GND_Y - 20;
+                c.group.y(cy);
+                c.lineL.points([xL, cy, cx - 50*compScale, cy]); 
+                c.lineR.points([cx + 50*compScale, cy, xR, cy]);
             }
         }
+        
+        const col = c.type === 'TX' ? '#f08c00' : (isDarkMode ? '#888' : '#333');
+        c.lineL.stroke(col); c.lineR.stroke(col);
+        c.labelObj.fill(isDarkMode ? '#d4d4d4' : '#333');
     }
 
     function drawShape(type) {
         const g = new Konva.Group({offsetX:50, offsetY:20});
         const bgCol = isDarkMode ? '#121212' : '#ffffff';
-        const strokeCol = getThemeColor();
-        
-        g.add(new Konva.Rect({ x:0, y:0, width:100, height:40, fill: bgCol, name:'bg', cornerRadius:0 })); // Transparent/BG match
-        const l = (p, w=2) => new Konva.Line({points:p, stroke:strokeCol, strokeWidth:w, lineCap:'round', lineJoin:'round'});
+        g.add(new Konva.Rect({ x:0, y:0, width:100, height:40, fill: bgCol, name:'bg', cornerRadius:4 }));
+        const l = (p, w=2) => new Konva.Line({points:p, stroke:'#888', strokeWidth:w, lineCap:'round', lineJoin:'round'});
         const mid = 20;
-
         if(type==='R') g.add(l([0,mid, 20,mid, 25,mid-10, 35,mid+10, 45,mid-10, 55,mid+10, 65,mid-10, 75,mid+10, 80,mid, 100,mid]));
-        else if(type==='L'){ g.add(new Konva.Path({x:20, y:mid, data:`M0,0 Q7,-15 14,0 Q21,-15 28,0 Q35,-15 42,0 Q49,-15 56,0`, stroke:strokeCol, strokeWidth:2})); g.add(l([0,mid, 20,mid])); g.add(l([76,mid, 100,mid])); }
+        else if(type==='L'){ g.add(new Konva.Path({x:20, y:mid, data:`M0,0 Q7,-15 14,0 Q21,-15 28,0 Q35,-15 42,0 Q49,-15 56,0`, stroke:'#888', strokeWidth:2})); g.add(l([0,mid, 20,mid])); g.add(l([76,mid, 100,mid])); }
         else if(type==='C'){ g.add(l([0,mid, 45,mid])); g.add(l([55,mid, 100,mid])); g.add(l([45,mid-12, 45,mid+12])); g.add(l([55,mid-12, 55,mid+12])); }
         else if(type.includes('V')){
             g.add(l([0,mid, 40,mid])); g.add(l([60,mid, 100,mid]));
-            if(type==='V_DC'){ 
-                g.add(l([40,mid-8, 40,mid+8], 2)); g.add(l([60,mid-16, 60,mid+16], 2)); 
-                g.add(new Konva.Text({x:65, y:mid-15, text:'+', fontSize:14, fill:'#e74c3c', fontStyle:'bold'})); 
-            }
-            else { 
-                g.add(new Konva.Circle({x:50, y:mid, radius:15, stroke:strokeCol, strokeWidth:2})); 
-                if(type === 'V_AC') g.add(new Konva.Path({x:43, y:mid, data:`M0,0 Q3.5,-6 7,0 T14,0`, stroke:strokeCol, strokeWidth:2})); 
-                else if(type === 'V_SQU') g.add(new Konva.Line({points:[38,mid+5, 38,mid-5, 50,mid-5, 50,mid+5, 62,mid+5, 62,mid-5], stroke:strokeCol, strokeWidth:1.5}));
-                else if(type === 'V_TRI') g.add(new Konva.Line({points:[38,mid, 44,mid-6, 56,mid+6, 62,mid], stroke:strokeCol, strokeWidth:1.5}));
-                else if(type === 'V_PULSE') g.add(new Konva.Line({points:[38,mid+5, 42,mid+5, 42,mid-5, 48,mid-5, 48,mid+5, 62,mid+5], stroke:strokeCol, strokeWidth:1.5}));
-            }
-        }
-        else if(type === 'D') {
-            g.add(l([0,mid, 40,mid])); g.add(l([60,mid, 100,mid]));
-            g.add(new Konva.Line({points:[40,mid-10, 40,mid+10, 60,mid], fill:strokeCol, stroke:strokeCol, strokeWidth:2, closed:true}));
-            g.add(l([60,mid-10, 60,mid+10], 3));
-        }
-        else if(type === 'OPAMP') {
-            g.add(l([50, mid, 100, mid])); 
-            g.add(new Konva.Line({points:[20,0, 20,40, 50,mid], stroke:strokeCol, strokeWidth:2, closed:true, fill:isDarkMode?'#252526':'#fff'}));
-            g.add(l([0, 5, 20, 5])); g.add(l([0, 35, 20, 35]));
-            g.add(new Konva.Text({x:25, y:2, text:'-', fontSize:14, fill:strokeCol, fontStyle:'bold'}));
-            g.add(new Konva.Text({x:23, y:25, text:'+', fontSize:14, fill:strokeCol, fontStyle:'bold'}));
+            if(type==='V_DC'){ g.add(l([40,mid-8, 40,mid+8], 2)); g.add(l([60,mid-16, 60,mid+16], 2)); g.add(new Konva.Text({x:65, y:mid-15, text:'+', fontSize:14, fill:'#e74c3c', fontStyle:'bold'})); }
+            else { g.add(new Konva.Circle({x:50, y:mid, radius:15, stroke:'#888', strokeWidth:2})); g.add(new Konva.Path({x:43, y:mid, data:`M0,0 Q3.5,-6 7,0 T14,0`, stroke:'#888', strokeWidth:2})); }
         }
         else if(type==='I_AC') {
             g.add(l([0,mid, 40,mid])); g.add(l([60,mid, 100,mid]));
-            g.add(new Konva.Circle({x:50, y:mid, radius:15, stroke:strokeCol, strokeWidth:2}));
-            g.add(new Konva.Arrow({points:[60, mid, 40, mid], pointerLength:6, pointerWidth:6, fill:strokeCol, stroke:strokeCol, strokeWidth:2}));
+            g.add(new Konva.Circle({x:50, y:mid, radius:15, stroke:'#888', strokeWidth:2}));
+            g.add(new Konva.Arrow({points:[60, mid, 40, mid], pointerLength:6, pointerWidth:6, fill:'#888', stroke:'#888', strokeWidth:2}));
         }
         else if(type==='TX') {
             g.add(l([48, 5, 48, 35], 2)); g.add(l([52, 5, 52, 35], 2)); 
-            g.add(new Konva.Path({data:"M35,10 c-6,0 -6,6 0,6 c-6,0 -6,6 0,6 c-6,0 -6,6 0,6 c-6,0 -6,6 0,6", stroke:strokeCol, strokeWidth:2}));
-            g.add(new Konva.Path({data:"M65,10 c6,0 6,6 0,6 c6,0 6,6 0,6 c6,0 6,6 0,6 c6,0 6,6 0,6", stroke:strokeCol, strokeWidth:2}));
+            g.add(new Konva.Path({data:"M35,10 c-6,0 -6,6 0,6 c-6,0 -6,6 0,6 c-6,0 -6,6 0,6 c-6,0 -6,6 0,6", stroke:'#888', strokeWidth:2}));
+            g.add(new Konva.Path({data:"M65,10 c6,0 6,6 0,6 c6,0 6,6 0,6 c6,0 6,6 0,6 c6,0 6,6 0,6 c6,0 6,6 0,6", stroke:'#888', strokeWidth:2}));
             g.add(l([0,20, 35,20])); g.add(l([65,20, 100,20]));
             g.add(l([35,10, 35,mid])); g.add(l([35,30, 35,mid]));
             g.add(l([65,10, 65,mid])); g.add(l([65,30, 65,mid]));
@@ -569,28 +473,12 @@
         return g;
     }
 
-    // [New] 4-way Rotation
-    function rotateComponent() {
-        if(selectedComp) {
-            selectedComp.rotation = (selectedComp.rotation + 90) % 360; 
-            updateComp(selectedComp);
-            compLayer.batchDraw();
-            pushHistory();
-        }
-    }
-
     function selectComponent(comp) {
         selectedComp = comp;
-        // Reset stroke
-        components.forEach(c => { 
-            if(c.shapeObj) { 
-                const bg=c.shapeObj.findOne('.bg'); 
-                if(bg){bg.stroke(null); bg.shadowBlur(0);} 
-            }
-        });
+        components.forEach(c => { if(c.shapeObj) { const bg=c.shapeObj.findOne('.bg'); if(bg){bg.stroke(null); bg.shadowBlur(0);} }});
         if (comp && comp.shapeObj) {
             const bg = comp.shapeObj.findOne('.bg');
-            if(bg){ bg.stroke(varCSS('--accent-color')); bg.strokeWidth(2); bg.shadowColor(varCSS('--accent-color')); bg.shadowBlur(5); }
+            if(bg){ bg.stroke('#007acc'); bg.strokeWidth(2); bg.shadowColor('#007acc'); bg.shadowBlur(10); }
             updateInspector(comp);
         } else { document.getElementById('inspector-panel').classList.remove('active'); }
         compLayer.batchDraw();
@@ -598,160 +486,103 @@
 
     function getLabel(c) {
         if(c.type==='TX') return `${c.name}\n1:${c.ratio}`;
-        if(c.type==='D') return `${c.name}\n${c.val}V`;
         let t=`${c.name}\n${formatUnit(c.val,c.unit)}`;
-        if(c.type.includes('AC') || c.type.includes('V_') || c.type==='I_AC') {
-             if(c.type!=='V_DC') t+=`\n${formatUnit(c.freq,'Hz')} ∠${c.phase||0}°`;
-        }
+        if(c.type.includes('AC')) t+=`\n${formatUnit(c.freq,'Hz')} ∠${c.phase||0}°`;
         return t;
     }
 
-    // Utility
-    function formatEng(v) { if (v === 0) return "0"; if (Math.abs(v) < 1e-15) return "0"; const p = Math.floor(Math.log10(Math.abs(v)) / 3); const prefixes = ['p', 'n', 'u', 'm', '', 'k', 'M', 'G']; const s = prefixes[p + 4]; if (s === undefined) return v.toExponential(2); return (v / Math.pow(10, p * 3)).toFixed(2) + s; }
-    function parseUnit(s){if(!s)return NaN;s=s.toString();const m=s.match(/^([\d\.]+)\s*([a-zA-Z]*)$/);if(!m)return parseFloat(s);const v=parseFloat(m[1]),u=m[2],k={'p':1e-12,'n':1e-9,'u':1e-6,'m':1e-3,'k':1e3,'M':1e6,'G':1e9};return v*(k[u]||1);}
-    function formatUnit(v,u){if(Math.abs(v)<1e-15)return "0"+u;const a=Math.abs(v),r=[{v:1e9,s:'G'},{v:1e6,s:'M'},{v:1e3,s:'k'},{v:1,s:''},{v:1e-3,s:'m'},{v:1e-6,s:'u'},{v:1e-9,s:'n'},{v:1e-12,s:'p'}];for(let x of r)if(a>=x.v*0.9)return parseFloat((v/x.v).toFixed(2))+x.s+u;return v.toExponential(1)+u;}
-
+    // [Modified] Split Inspector to Left (Inputs) / Right (Tuning)
     function updateInspector(c) {
         const content = document.getElementById('inspector-content');
         document.getElementById('inspector-panel').classList.add('active');
         
         let leftCol = `<div class="insp-left">`;
         leftCol += `<div class="insp-row"><label>Name</label><input type="text" value="${c.name}" disabled></div>`;
-        
         if (c.type === 'TX') {
             leftCol += `<div class="insp-row"><label>Turns Ratio (1:N)</label><input type="number" id="insp-ratio" value="${c.ratio}" step="0.1"></div>`;
             baseTuneValue = c.ratio; tuningParam = 'ratio';
         } else {
-            let valStr = formatUnit(c.val, '').replace(/[a-zA-Z]*$/, '');
-            if(c.type === 'D') valStr = c.val; 
-            leftCol += `<div class="insp-row"><label>Value (${c.unit})</label><input type="text" id="insp-val" value="${valStr}"></div>`;
+            leftCol += `<div class="insp-row"><label>Value (${c.unit})</label><input type="text" id="insp-val" value="${formatUnit(c.val, '').replace(/[a-zA-Z]*$/, '')}"></div>`;
             baseTuneValue = c.val; tuningParam = 'val';
-
-            if(c.type.includes('V_') || c.type === 'I_AC') {
-                if(c.type !== 'V_DC'){
-                    leftCol += `<div class="insp-row"><label>Frequency (Hz)</label><input type="number" id="insp-freq" value="${c.freq}"></div>`;
-                    leftCol += `<div class="insp-row"><label>Phase (deg)</label><input type="number" id="insp-phase" value="${c.phase||0}"></div>`;
-                }
-            }
-            if (c.type === 'V_PULSE') {
-                leftCol += `<div class="insp-row"><label>Duty Cycle (%)</label><input type="number" id="insp-duty" value="${c.duty || 50}" min="1" max="99" step="1"></div>`;
+            if(c.type.includes('AC')) {
+                leftCol += `<div class="insp-row"><label>Frequency (Hz)</label><input type="number" id="insp-freq" value="${c.freq}"></div>`;
+                leftCol += `<div class="insp-row"><label>Phase (deg)</label><input type="number" id="insp-phase" value="${c.phase||0}"></div>`;
             }
         }
         
         leftCol += `<div class="insp-row" style="display:flex; justify-content:space-between; margin-top:5px;">
-                    <button class="btn-primary" onclick="rotateComponent()" style="flex:1; margin-right:5px;">↻ Rotate</button>
-                    <button onclick="deleteSelected()" class="btn-danger" style="flex:1; margin-left:5px;">Delete</button>
-                  </div>`;
-        
-        leftCol += `<div style="margin-top:10px; border-top:1px dashed var(--border-color); padding-top:5px;">
-                        <label style="color:var(--accent-color); margin-bottom:5px;">Add Probe</label>
-                        <div style="display:flex; gap:5px;">
-                            <button onclick="addProbe('V', ${c.nL}, 'N${c.nL}')" style="font-size:11px;">V(N${c.nL})</button>
-                            ${c.nR !== -1 ? `<button onclick="addProbe('V', ${c.nR}, 'N${c.nR}')" style="font-size:11px;">V(N${c.nR})</button>` : ''}
-                            <button onclick="addProbe('I', '${c.name}', '${c.name}')" style="font-size:11px;">I(${c.name})</button>
-                        </div>
-                    </div></div>`; 
+                     <button class="btn-primary" onclick="rotateComponent()" style="flex:1; margin-right:5px;">↻ Rotate</button>
+                     <button onclick="deleteSelected()" class="btn-danger" style="flex:1; margin-left:5px;">Delete</button>
+                  </div></div>`; 
 
         let radioHTML = '';
-        if (c.type.includes('V_') || c.type === 'I_AC') {
-            if(c.type !== 'V_DC'){
-                radioHTML = `<div class="radio-group">
-                    <label><input type="radio" name="tuneTarget" value="val" checked onchange="setTuneTarget('val')"> Mag</label>
-                    <label><input type="radio" name="tuneTarget" value="freq" onchange="setTuneTarget('freq')"> Freq</label>
-                    <label><input type="radio" name="tuneTarget" value="phase" onchange="setTuneTarget('phase')"> Phase</label>`;
-                if (c.type === 'V_PULSE') radioHTML += `<label><input type="radio" name="tuneTarget" value="duty" onchange="setTuneTarget('duty')"> Duty</label>`;
-                radioHTML += `</div>`;
-            }
+        if (c.type.includes('AC')) {
+            radioHTML = `<div class="radio-group"><label><input type="radio" name="tuneTarget" value="val" checked onchange="setTuneTarget('val')"> Mag</label><label><input type="radio" name="tuneTarget" value="freq" onchange="setTuneTarget('freq')"> Freq</label><label><input type="radio" name="tuneTarget" value="phase" onchange="setTuneTarget('phase')"> Phase</label></div>`;
         }
-        
         let rightCol = `<div class="tuning-wrapper">${radioHTML}<div class="tuning-label"><span>Tuning</span><span id="tune-pct">0%</span></div><input type="range" min="-50" max="50" value="0" id="tune-slider"><button class="btn-apply" onclick="applyTuning()">Apply</button></div>`;
+        
         content.innerHTML = leftCol + rightCol;
         
-        const setVal = (k, v) => { 
-            c[k] = v; c.labelObj.text(getLabel(c)); 
-            if(k === tuningParam) baseTuneValue = v; 
-            compLayer.batchDraw(); pushHistory(); runSteady();
-            if(['V_SQU', 'V_TRI', 'V_PULSE'].includes(c.type)) runTransient();
-        };
-
+        const setVal = (k, v) => { c[k] = v; c.labelObj.text(getLabel(c)); if(k === tuningParam) baseTuneValue = v; compLayer.batchDraw(); pushHistory(); runSteady(); };
         const iVal = document.getElementById('insp-val'); if(iVal) iVal.onchange = e => setVal('val', parseUnit(e.target.value));
         const iRatio = document.getElementById('insp-ratio'); if(iRatio) iRatio.onchange = e => setVal('ratio', parseFloat(e.target.value));
         const iFreq = document.getElementById('insp-freq'); if(iFreq) iFreq.onchange = e => setVal('freq', parseFloat(e.target.value));
         const iPhase = document.getElementById('insp-phase'); if(iPhase) iPhase.onchange = e => setVal('phase', parseFloat(e.target.value));
-        const iDuty = document.getElementById('insp-duty'); if(iDuty) iDuty.onchange = e => setVal('duty', parseFloat(e.target.value));
-
         const slider = document.getElementById('tune-slider');
         const pctLabel = document.getElementById('tune-pct');
         if(slider) {
             slider.oninput = (e) => {
                 const pct = parseInt(e.target.value);
                 pctLabel.innerText = (pct > 0 ? '+' : '') + pct + '%';
-                let newVal = baseTuneValue * (1 + pct/100);
-                if (tuningParam === 'duty') { if(newVal > 99) newVal = 99; if(newVal < 1) newVal = 1; }
+                const newVal = baseTuneValue * (1 + pct/100);
                 c[tuningParam] = newVal;
-                
                 if(tuningParam === 'val') { const el = document.getElementById('insp-val'); if(el) el.value = formatUnit(newVal, '').replace(/[a-zA-Z]*$/, ''); }
                 else if (tuningParam === 'ratio') { const el = document.getElementById('insp-ratio'); if(el) el.value = newVal.toFixed(2); }
                 else if (tuningParam === 'freq') { const el = document.getElementById('insp-freq'); if(el) el.value = newVal.toFixed(2); }
                 else if (tuningParam === 'phase') { const el = document.getElementById('insp-phase'); if(el) el.value = newVal.toFixed(2); }
-                else if (tuningParam === 'duty') { const el = document.getElementById('insp-duty'); if(el) el.value = newVal.toFixed(1); }
-
-                c.labelObj.text(getLabel(c)); compLayer.batchDraw(); runSteady();
+                c.labelObj.text(getLabel(c)); compLayer.batchDraw(); runSteady(); 
             };
             slider.onchange = (e) => { runTransient(); };
+        }
+    }
+    
+    function rotateComponent() {
+        if(selectedComp) {
+            selectedComp.rotation = (selectedComp.rotation === 0) ? 90 : 0; 
+            updateComp(selectedComp);
+            compLayer.batchDraw();
+            pushHistory();
         }
     }
 
     function setTuneTarget(param) { if(selectedComp) { tuningParam = param; baseTuneValue = selectedComp[param]; document.getElementById('tune-slider').value = 0; document.getElementById('tune-pct').innerText = "0%"; } }
     function applyTuning() { if(selectedComp) { baseTuneValue = selectedComp[tuningParam]; document.getElementById('tune-slider').value = 0; document.getElementById('tune-pct').innerText = "0%"; pushHistory(); } }
+    function deleteSelected() { if(selectedComp) { selectedComp.group.destroy(); selectedComp.lineL.destroy(); selectedComp.lineR.destroy(); components = components.filter(x=>x!==selectedComp); selectedComp=null; compLayer.draw(); document.getElementById('inspector-panel').classList.remove('active'); pushHistory(); }}
+
+    function getSetup(){
+        if(components.length===0) return alert('No parts');
+        let matrixIdx = 0; const compactMap = {}; compactMap[0] = -1;
+        for(let i=1; i<=railCount; i++){ if(groundRails.has(i)) compactMap[i] = -1; else compactMap[i] = matrixIdx++; }
+        return {map: compactMap, N: matrixIdx};
+    }
     
-    function deleteSelected() { if(selectedComp) { 
-        selectedComp.group.destroy(); selectedComp.lineL.destroy(); selectedComp.lineR.destroy(); 
-        if(selectedComp.lineOut) selectedComp.lineOut.destroy();
-        components = components.filter(x=>x!==selectedComp); selectedComp=null; 
-        compLayer.draw(); document.getElementById('inspector-panel').classList.remove('active'); pushHistory(); 
-    }}
-
-    function addProbe(type, target, label) {
-        if(activeProbes.find(p => p.type === type && p.target === target)) return;
-        const color = probeColors[activeProbes.length % probeColors.length];
-        activeProbes.push({ type, target, label, color });
-        updateProbeUI();
-        if(lastSimResult) drawTransientChart(lastSimResult.timeLog, lastSimResult.resV, lastSimResult.N, lastSimResult.map);
-    }
-    function removeProbe(index) {
-        activeProbes.splice(index, 1);
-        updateProbeUI();
-        if(lastSimResult) drawTransientChart(lastSimResult.timeLog, lastSimResult.resV, lastSimResult.N, lastSimResult.map);
-    }
-    function updateProbeUI() {
-        const list = document.getElementById('probe-list');
-        list.innerHTML = '';
-        if(activeProbes.length === 0) { list.innerHTML = '<span style="font-size:11px; color:var(--text-color); opacity:0.6;">Select component -> Add Probe</span>'; return; }
-        activeProbes.forEach((p, i) => {
-            const tag = document.createElement('div');
-            tag.style.cssText = `background:${p.color}22; border:1px solid ${p.color}; color:${p.color}; padding:2px 6px; border-radius:10px; font-size:10px; display:flex; align-items:center; gap:4px; cursor:default;`;
-            tag.innerHTML = `<b>${p.type}</b> ${p.label} <span onclick="removeProbe(${i})" style="cursor:pointer; font-weight:bold;">×</span>`;
-            list.appendChild(tag);
-        });
-    }
-
-    // Steady State with High-Res Diode approximation
+    // [Modified] Steady State now includes Current output for all components and RMS
     function runSteady() {
         const s=getSetup(); if(!s)return; const {map,N}=s;
-        const acs = components.filter(c=>c.type.includes('AC') || c.type==='I_AC');
-        let freq = 0; if(acs.length > 0) { freq = Math.max(...acs.map(c => c.freq)); }
+        
+        const acs = components.filter(c=>c.type.includes('AC'));
+        let freq = 0;
+        if(acs.length > 0) { freq = Math.max(...acs.map(c => c.freq)); }
+        
         const w=2*Math.PI*freq;
-        const Vs=components.filter(c=>c.type.includes('V') || c.type==='OPAMP'), Ts=components.filter(c=>c.type==='TX');
+        const Vs=components.filter(c=>c.type.includes('V')), Ts=components.filter(c=>c.type==='TX');
         const size=N+Vs.length+Ts.length;
         let A=math.zeros(size,size,'dense'), B=math.zeros(size,1,'dense');
         const vOff=N, tOff=vOff+Vs.length;
         
-        for(let i=0; i<size; i++) A.set([i,i], math.complex(1e-12,0)); 
-
         components.forEach(c=>{
             let n1, n2;
-            if (c.rotation === 90 || c.rotation === 270) { n1 = map[c.nL]; n2 = -1; } 
+            if(c.rotation === 90 || c.rotation === 270) { n1 = map[c.nL]; n2 = -1; } 
             else { n1 = map[c.nL]; n2 = map[c.nR]; }
 
             if(['R','L','C'].includes(c.type)) {
@@ -760,13 +591,6 @@
                 else if(c.type==='L') Y=(w===0)?math.complex(1e9,0):math.complex(0, -1/(w*c.val));
                 else if(c.type==='C') Y=(w===0)?math.complex(0,0):math.complex(0, w*c.val);
                 
-                if(n1>=0) A.set([n1,n1],math.add(A.get([n1,n1]),Y));
-                if(n2>=0) A.set([n2,n2],math.add(A.get([n2,n2]),Y));
-                if(n1>=0&&n2>=0){ const nY=math.multiply(Y,-1); A.set([n1,n2],math.add(A.get([n1,n2]),nY)); A.set([n2,n1],math.add(A.get([n2,n1]),nY)); }
-            }
-            else if(c.type === 'D') {
-                // Approximate Diode as High Resistance
-                let Y = math.complex(1e-8, 0); 
                 if(n1>=0) A.set([n1,n1],math.add(A.get([n1,n1]),Y));
                 if(n2>=0) A.set([n2,n2],math.add(A.get([n2,n2]),Y));
                 if(n1>=0&&n2>=0){ const nY=math.multiply(Y,-1); A.set([n1,n2],math.add(A.get([n1,n2]),nY)); A.set([n2,n1],math.add(A.get([n2,n1]),nY)); }
@@ -787,14 +611,6 @@
                 const idx=tOff+Ts.indexOf(c);
                 if(n2>=0){A.set([n2,idx],1);A.set([idx,n2],1);} if(n1>=0){A.set([n1,idx],-c.ratio);A.set([idx,n1],-c.ratio);}
             }
-            else if(c.type === 'OPAMP') {
-                const idx = vOff + Vs.indexOf(c);
-                const nMinus = map[c.nL]; const nPlus = map[c.nR]; const nOut = map[Math.round((c.nL+c.nR)/2)];
-                if(nOut>=0) { A.set([nOut,idx],1); A.set([idx,nOut],1); }
-                const gain = c.val;
-                if(nPlus>=0) A.set([idx, nPlus], A.get([idx, nPlus]) - gain);
-                if(nMinus>=0) A.set([idx, nMinus], A.get([idx, nMinus]) + gain);
-            }
         });
         
         try {
@@ -810,18 +626,68 @@
                 html += `<tr><td>V(N${invMap[i]})</td><td>${formatUnit(p.r,'V')}</td><td>${formatUnit(rms,'V')}</td><td>${(p.phi*180/Math.PI).toFixed(1)}°</td></tr>`;
             }
             steadyResults.nodes['N0'] = math.complex(0,0);
+
+            components.forEach(c => {
+                let I = math.complex(0,0);
+                let n1, n2;
+                if(c.rotation === 90 || c.rotation === 270) { n1 = map[c.nL]; n2 = -1; } 
+                else { n1 = map[c.nL]; n2 = map[c.nR]; }
+
+                if(['R','L','C'].includes(c.type)) {
+                    const v1 = n1>=0 ? X.get([n1,0]) : math.complex(0,0);
+                    const v2 = n2>=0 ? X.get([n2,0]) : math.complex(0,0);
+                    const V_drop = math.subtract(v1, v2);
+                    if(c.type === 'R') I = math.divide(V_drop, c.val);
+                    else if(c.type === 'L') { const Z = math.complex(0, w*c.val); I = (w===0)?math.complex(1e9,0):math.divide(V_drop, Z); }
+                    else if(c.type === 'C') { const Z = (w===0)?math.complex(1e9,0):math.complex(0, -1/(w*c.val)); I = math.divide(V_drop, Z); }
+                } else if(c.type.includes('V')) {
+                    I = X.get([vOff+Vs.indexOf(c), 0]);
+                } else if(c.type === 'I_AC') {
+                    const phi = (c.phase || 0) * Math.PI / 180;
+                    I = math.complex(c.val * Math.cos(phi), c.val * Math.sin(phi));
+                } else if(c.type === 'TX') {
+                    I = X.get([tOff+Ts.indexOf(c), 0]); 
+                }
+                steadyResults.currents[c.name] = I;
+                let p = I.toPolar(); let rms = p.r / Math.SQRT2;
+                html += `<tr><td>I(${c.name})</td><td>${formatUnit(p.r,'A')}</td><td>${formatUnit(rms,'A')}</td><td>${(p.phi*180/Math.PI).toFixed(1)}°</td></tr>`;
+            });
             
-            if(customFormulas.length > 0) {
-               const scope = { ...steadyResults.nodes, ...steadyResults.currents, real: math.re, imaginary: math.im, abs: math.abs, conj: math.conj, V: function(n) { return steadyResults.nodes[n] || math.complex(0,0); } };
-               customFormulas.forEach((fmt, idx) => {
-                   try { const res = math.evaluate(fmt, scope); let cmplx = (typeof res==='object' && res.re!==undefined) ? res : math.complex(res); let p = cmplx.toPolar(); let rms = p.r/Math.SQRT2; html += `<tr class="custom-row"><td>${fmt}</td><td>${formatUnit(p.r,'')}</td><td>${formatUnit(rms,'')}</td><td>${(p.phi*180/Math.PI).toFixed(1)}°</td><td><button class="btn-del-row" onclick="removeCustomFormula(${idx})">×</button></td></tr>`; } catch(e) {}
-               });
+             if(customFormulas.length > 0) {
+                const scope = { 
+                    ...steadyResults.nodes, ...steadyResults.currents, 
+                    real: math.re, imaginary: math.im, abs: math.abs, conj: math.conj,
+                    V: function(n) { return steadyResults.nodes[n] || math.complex(0,0); },
+                    I: function(c) { return steadyResults.currents[c] || math.complex(0,0); }
+                };
+                Object.keys(steadyResults.nodes).forEach(k => scope[k] = k);
+                Object.keys(steadyResults.currents).forEach(k => scope[k] = k);
+
+                customFormulas.forEach((fmt, idx) => {
+                    try {
+                        const res = math.evaluate(fmt, scope);
+                        html += `<tr class="custom-row"><td>${fmt}</td>`;
+                        let cmplx = (typeof res === 'object' && res.re!==undefined) ? res : math.complex(res);
+                        let p = cmplx.toPolar(); let rms = p.r / Math.SQRT2;
+                        html += `<td>${formatUnit(p.r,'')}</td><td>${formatUnit(rms,'')}</td><td>${(p.phi*180/Math.PI).toFixed(1)}°</td>`;
+                        html += `<td><button class="btn-del-row" onclick="removeCustomFormula(${idx})">×</button></td></tr>`;
+                    } catch(e) { html += `<tr class="custom-row"><td>${fmt}</td><td colspan="3" style="color:red">Error</td><td><button class="btn-del-row" onclick="removeCustomFormula(${idx})">×</button></td></tr>`; }
+                });
             }
             document.getElementById('steady-result-content').innerHTML = html + "</table>";
         } catch(e){ document.getElementById('steady-result-content').innerHTML='Singular Matrix or Error.'; }
     }
 
-    // [Fix: Iterative Transient Solver with Correct Diode Direction]
+    function addCustomFormula() {
+        const inp = document.getElementById('formula-inp');
+        const val = inp.value.trim();
+        if(!val) return;
+        customFormulas.push(val);
+        inp.value = '';
+        if(steadyResults) runSteady(); 
+    }
+    function removeCustomFormula(idx) { customFormulas.splice(idx, 1); runSteady(); }
+
     async function runTransient() {
         const s=getSetup(); if(!s)return; const {map,N}=s;
         const tMax_ms = parseFloat(document.getElementById('tMax').value);
@@ -834,20 +700,39 @@
         const pOv=document.getElementById('progress-overlay'), pFill=document.getElementById('p-fill'), pTxt=document.getElementById('status-text');
         if(steps>5000) { pOv.style.display='flex'; pFill.style.width='0%'; pTxt.innerText='Init...'; }
 
-        const Ls=components.filter(c=>c.type==='L');
-        const Vs=components.filter(c=>c.type.includes('V') || c.type==='OPAMP');
+        const Ls=components.filter(c=>c.type==='L'), Vs=components.filter(c=>c.type.includes('V'));
         const Is=components.filter(c=>c.type==='I_AC');
-        const Cs=components.filter(c=>c.type==='C');
-        const Ts=components.filter(c=>c.type==='TX');
-        const Ds=components.filter(c=>c.type==='D');
-
+        const Cs=components.filter(c=>c.type==='C'), Ts=components.filter(c=>c.type==='TX');
         const size=N+Ls.length+Vs.length+Ts.length;
-        const lOff=N, vOff=N+Ls.length, tOff=vOff+Vs.length;
-
         let x=math.zeros(size,1); 
-        const c_prev_V=new Array(Cs.length).fill(0); const c_prev_I=new Array(Cs.length).fill(0);
-        const l_prev_V=new Array(Ls.length).fill(0); const l_prev_I=new Array(Ls.length).fill(0);
-        const d_state = new Array(Ds.length).fill(false); 
+        const c_prev_V=[], c_prev_I=[], l_prev_V=[], l_prev_I=[];
+        Cs.forEach(()=>{c_prev_V.push(0);c_prev_I.push(0)}); Ls.forEach(()=>{l_prev_V.push(0);l_prev_I.push(0)});
+
+        let A=math.zeros(size,size);
+        const lOff=N, vOff=N+Ls.length, tOff=vOff+Vs.length;
+        const addA=(r,c,v)=>{if(r>=0&&c>=0)A.set([r,c],A.get([r,c])+v)};
+
+        components.forEach(c=>{
+            let n1, n2;
+            if(c.rotation === 90 || c.rotation === 270) { n1 = map[c.nL]; n2 = -1; } 
+            else { n1 = map[c.nL]; n2 = map[c.nR]; }
+
+            if(c.type==='R'){ const g=1/c.val; addA(n1,n1,g); addA(n2,n2,g); addA(n1,n2,-g); addA(n2,n1,-g); }
+            else if(c.type==='C'){ const g=(2*c.val)/dt; addA(n1,n1,g); addA(n2,n2,g); addA(n1,n2,-g); addA(n2,n1,-g); }
+            else if(c.type==='L'){ const idx=lOff+Ls.indexOf(c), r=(2*c.val)/dt; if(n1>=0){A.set([n1,idx],1);A.set([idx,n1],1);} if(n2>=0){A.set([n2,idx],-1);A.set([idx,n2],-1);} A.set([idx,idx],-r); }
+            else if(c.type.includes('V')){ const idx=vOff+Vs.indexOf(c); if(n2>=0){A.set([n2,idx],1);A.set([idx,n2],1);} if(n1>=0){A.set([n1,idx],-1);A.set([idx,n1],-1);} }
+            else if(c.type==='TX'){ 
+                const N_ratio = c.ratio; 
+                const L1_val = 1; 
+                const L2_val = L1_val * N_ratio * N_ratio; 
+                const k = 0.99999; 
+                const M_val = k * Math.sqrt(L1_val * L2_val);
+                const delta = L1_val * L2_val - M_val * M_val;
+                const factor = dt / delta; 
+                const idx=tOff+Ts.indexOf(c); 
+                if(n2>=0){A.set([n2,idx],1);A.set([idx,n2],1);} if(n1>=0){A.set([n1,idx],-c.ratio);A.set([idx,n1],-c.ratio);}
+            }
+        });
 
         const resV=Array(N).fill(0).map(()=>[]);
         const resI=components.map(()=>[]);
@@ -859,223 +744,89 @@
             const t=s*dt;
             if(steps>5000 && s%chunk===0){ pFill.style.width=`${(s/steps)*100}%`; pTxt.innerText=`${Math.round(s/steps*100)}%`; await new Promise(r=>setTimeout(r,0)); }
 
-            const MAX_ITER = 10;
-            for(let iter=0; iter<MAX_ITER; iter++) {
-                
-                let A=math.zeros(size,size); let B=math.zeros(size,1);
-                for(let i=0; i<size; i++) A.set([i,i], 1e-12); // Stability
-
-                const addA=(r,c,v)=>{if(r>=0&&c>=0)A.set([r,c],A.get([r,c])+v)};
-                const addB=(r,v)=>{if(r>=0)B.set([r,0],B.get([r,0])+v)};
-
-                components.forEach(c=>{
-                    if(c.type==='D' || c.type==='OPAMP' || c.type.includes('V') || c.type.includes('I')) return;
-                    let n1, n2; if(c.rotation===90||c.rotation===270){n1=map[c.nL];n2=-1;} else{n1=map[c.nL];n2=map[c.nR];}
-
-                    if(c.type==='R'){ const g=1/c.val; addA(n1,n1,g); addA(n2,n2,g); addA(n1,n2,-g); addA(n2,n1,-g); }
-                    else if(c.type==='C'){ 
-                        const idx=Cs.indexOf(c); const g=(2*c.val)/dt; 
-                        addA(n1,n1,g); addA(n2,n2,g); addA(n1,n2,-g); addA(n2,n1,-g);
-                        const I_inj=g*c_prev_V[idx]+c_prev_I[idx]; addB(n1,I_inj); addB(n2,-I_inj);
-                    }
-                    else if(c.type==='L'){ 
-                        const idx=lOff+Ls.indexOf(c); const r=(2*c.val)/dt; 
-                        if(n1>=0){A.set([n1,idx],1);A.set([idx,n1],1);} 
-                        if(n2>=0){A.set([n2,idx],-1);A.set([idx,n2],-1);} 
-                        A.set([idx,idx],-r);
-                        B.set([idx,0], -l_prev_V[Ls.indexOf(c)] - r*l_prev_I[Ls.indexOf(c)]);
-                    }
-                    else if(c.type==='TX'){
-                        const idx=tOff+Ts.indexOf(c); 
-                        if(n2>=0){A.set([n2,idx],1);A.set([idx,n2],1);} 
-                        if(n1>=0){A.set([n1,idx],-c.ratio);A.set([idx,n1],-c.ratio);}
-                    }
-                });
-
-                Ds.forEach((c, i) => {
-                    // [Rotation Logic] 0:L->R, 180:R->L
-                    let nAnode, nCathode;
-                    if(c.rotation === 0) { nAnode = map[c.nL]; nCathode = map[c.nR]; }
-                    else if(c.rotation === 180) { nAnode = map[c.nR]; nCathode = map[c.nL]; }
-                    else if(c.rotation === 90) { nAnode = map[c.nL]; nCathode = -1; } // Top->Bot ? No 90 is usually Vertical.
-                    else { nAnode = map[c.nL]; nCathode = -1; } 
-                    
-                    // Simple Vertical Logic for now
-                    if(c.rotation === 90 || c.rotation === 270) {
-                        nAnode = map[c.nL]; nCathode = -1; // Vertical always connected to GND at bottom?
-                        // Actually Vertical is Node -> GND.
-                        // If 90: Top is Anode.
-                        // If 270: Top is Cathode.
-                        if(c.rotation === 270) { nCathode = map[c.nL]; nAnode = -1; }
-                    }
-
-                    if(d_state[i]) {
-                        // ON: V_A - V_K = 0.7 + I*0.1
-                        // I = (V_A - V_K - 0.7)*G. G=1/0.1
-                        const g = 1/0.1; 
-                        addA(nAnode,nAnode,g); addA(nCathode,nCathode,g); 
-                        addA(nAnode,nCathode,-g); addA(nCathode,nAnode,-g);
-                        
-                        // Current Source injection I_src = 0.7 * G
-                        // I flows A -> K. So Leave A (-), Enter K (+).
-                        // Wait, Eq: G*Va - G*Vk = I + G*0.7.
-                        // RHS gets + G*0.7 at Anode, - G*0.7 at Cathode.
-                        const i_src = c.val * g; 
-                        addB(nAnode, i_src); addB(nCathode, -i_src);
-                    } else {
-                        const g = 1e-9; 
-                        addA(nAnode,nAnode,g); addA(nCathode,nCathode,g); 
-                        addA(nAnode,nCathode,-g); addA(nCathode,nAnode,-g);
-                    }
-                });
-
-                Vs.forEach((c, i) => {
-                    const idx = vOff + i;
-                    let n1, n2;
-                    if(c.rotation===90||c.rotation===270){n1=map[c.nL];n2=-1;} else{n1=map[c.nL];n2=map[c.nR];}
-                    
-                    if(c.type === 'OPAMP') {
-                        const np = map[c.nR]; const nm = map[c.nL]; const nOut = map[Math.round((c.nL+c.nR)/2)];
-                        if(nOut>=0) { A.set([nOut,idx],1); A.set([idx,nOut],1); }
-                        const gain = c.val;
-                        if(np>=0) A.set([idx, np], A.get([idx, np]) - gain);
-                        if(nm>=0) A.set([idx, nm], A.get([idx, nm]) + gain);
-                        B.set([idx, 0], 0);
-                    } else {
-                        if(n2>=0){A.set([n2,idx],1);A.set([idx,n2],1);} 
-                        if(n1>=0){A.set([n1,idx],-1);A.set([idx,n1],-1);}
-                        
-                        let v = c.val;
-                        const omega = 2 * Math.PI * c.freq;
-                        const phi = (c.phase || 0) * Math.PI / 180;
-                        const theta = omega * t + phi;
-                        if (c.type === 'V_AC') v *= Math.sin(theta);
-                        else if (c.type === 'V_SQU') v *= Math.sign(Math.sin(theta));
-                        else if (c.type === 'V_TRI') v *= (2/Math.PI)*Math.asin(Math.sin(theta));
-                        else if (c.type === 'V_PULSE') {
-                            const period = 1/c.freq; const localT=(t+(c.phase||0)/360*period)%period;
-                            v = (localT < period*(c.duty/100)) ? c.val : 0;
-                        }
-                        else if (t < 0) v = 0;
-                        B.set([idx, 0], v);
-                    }
-                });
-
-                Is.forEach(c => {
-                    let n1, n2; if(c.rotation===90||c.rotation===270){n1=map[c.nL];n2=-1;}else{n1=map[c.nL];n2=map[c.nR];}
-                    const val = c.val * Math.sin(2*Math.PI*c.freq*t + (c.phase||0)*Math.PI/180);
-                    addB(n1, val); addB(n2, -val);
-                });
-
-                try {
-                    x = math.lusolve(A, B);
-                } catch(e) { console.error("Matrix Error", e); break; }
-
-                let converged = true;
-                Ds.forEach((c, i) => {
-                    let nAnode, nCathode;
-                    if(c.rotation === 0) { nAnode = map[c.nL]; nCathode = map[c.nR]; }
-                    else if(c.rotation === 180) { nAnode = map[c.nR]; nCathode = map[c.nL]; }
-                    else if(c.rotation === 90) { nAnode = map[c.nL]; nCathode = -1; }
-                    else { nAnode = -1; nCathode = map[c.nL]; }
-
-                    const vA = nAnode>=0?x.get([nAnode,0]):0; 
-                    const vK = nCathode>=0?x.get([nCathode,0]):0;
-                    const newState = ((vA - vK) > c.val);
-                    if(d_state[i] !== newState) {
-                        d_state[i] = newState;
-                        converged = false;
-                    }
-                });
-
-                if(converged) break;
-            }
-
-            timeLog.push(t);
-            for(let i=0;i<N;i++) resV[i].push(x.get([i,0]));
-
+            let B=math.zeros(size,1); const addB=(r,v)=>{if(r>=0)B.set([r,0],B.get([r,0])+v)};
+            
             Cs.forEach((c,i)=>{
                 let n1, n2; if(c.rotation===90||c.rotation===270){n1=map[c.nL];n2=-1;}else{n1=map[c.nL];n2=map[c.nR];}
-                const v1=n1>=0?x.get([n1,0]):0; const v2=n2>=0?x.get([n2,0]):0;
-                const v=v1-v2; const G=(2*c.val)/dt; 
-                const i_new = -c_prev_I[i] + G*(v - c_prev_V[i]); 
-                c_prev_V[i]=v; c_prev_I[i]=i_new;
+                const G=(2*c.val)/dt; const I_inj=G*c_prev_V[i]+c_prev_I[i]; addB(n1,I_inj); addB(n2,-I_inj);
             });
-            Ls.forEach((c,i)=>{
+            Ls.forEach((c,i)=>{const idx=lOff+i, R=(2*c.val)/dt, v_eq = -l_prev_V[i] - R*l_prev_I[i]; B.set([idx,0], v_eq);});
+            
+            Vs.forEach((c,i)=>{
+                const idx=vOff+i; let v=c.val; 
+                if(c.type==='V_AC') v *= Math.sin(2*Math.PI*c.freq*t + (c.phase||0)*Math.PI/180); 
+                else if(t<0) v=0; 
+                B.set([idx,0], v);
+            });
+            Is.forEach((c)=>{
                 let n1, n2; if(c.rotation===90||c.rotation===270){n1=map[c.nL];n2=-1;}else{n1=map[c.nL];n2=map[c.nR];}
-                const i_new=x.get([lOff+i,0]);
-                const v1=n1>=0?x.get([n1,0]):0; const v2=n2>=0?x.get([n2,0]):0;
-                l_prev_V[i]=v1-v2; l_prev_I[i]=i_new;
+                let val = c.val * Math.sin(2*Math.PI*c.freq*t + (c.phase||0)*Math.PI/180);
+                if(n1>=0) B.set([n1,0], B.get([n1,0]) + val);
+                if(n2>=0) B.set([n2,0], B.get([n2,0]) - val);
             });
-
-            components.forEach((c, cIdx) => {
-                let curr = 0;
-                if(c.type.includes('V') || c.type === 'OPAMP') { curr = x.get([vOff + Vs.indexOf(c), 0]); }
-                else if(c.type === 'L') { curr = l_prev_I[Ls.indexOf(c)]; }
-                else if(c.type === 'C') { curr = c_prev_I[Cs.indexOf(c)]; }
-                else if(c.type === 'R') { 
-                    let n1,n2; if(c.rotation===90||c.rotation===270){n1=map[c.nL];n2=-1;}else{n1=map[c.nL];n2=map[c.nR];}
+            
+            try{
+                x=math.lusolve(A,B);
+                
+                Cs.forEach((c,i)=>{
+                    let n1, n2; if(c.rotation===90||c.rotation===270){n1=map[c.nL];n2=-1;}else{n1=map[c.nL];n2=map[c.nR];}
                     const v1=n1>=0?x.get([n1,0]):0; const v2=n2>=0?x.get([n2,0]):0;
-                    curr = (v1-v2)/c.val;
-                }
-                else if(c.type === 'D') {
-                    // Current approx
-                    let nAnode, nCathode;
-                    if(c.rotation === 0) { nAnode = map[c.nL]; nCathode = map[c.nR]; }
-                    else if(c.rotation === 180) { nAnode = map[c.nR]; nCathode = map[c.nL]; }
-                    else if(c.rotation === 90) { nAnode = map[c.nL]; nCathode = -1; }
-                    else { nAnode = -1; nCathode = map[c.nL]; }
-                    
-                    const vA = nAnode>=0?x.get([nAnode,0]):0; const vK = nCathode>=0?x.get([nCathode,0]):0;
-                    const v = vA - vK;
-                    if(v > c.val) curr = (v - c.val) / 0.1; else curr = v / 1e9;
-                }
-                resI[cIdx].push(curr);
-            });
+                    const v=v1-v2; const G=(2*c.val)/dt; 
+                    const i_new = -c_prev_I[i] + G*(v - c_prev_V[i]); 
+                    c_prev_V[i]=v; c_prev_I[i]=i_new;
+                });
+                Ls.forEach((c,i)=>{
+                    let n1, n2; if(c.rotation===90||c.rotation===270){n1=map[c.nL];n2=-1;}else{n1=map[c.nL];n2=map[c.nR];}
+                    const i_new=x.get([lOff+i,0]);
+                    const v1=n1>=0?x.get([n1,0]):0; const v2=n2>=0?x.get([n2,0]):0;
+                    l_prev_I[i]=i_new; l_prev_V[i]=v1-v2;
+                });
+                timeLog.push(t); 
+                for(let i=0;i<N;i++) resV[i].push(x.get([i,0])); 
+
+                components.forEach((c, cIdx) => {
+                    let curr = 0;
+                    let n1, n2; if(c.rotation===90||c.rotation===270){n1=map[c.nL];n2=-1;}else{n1=map[c.nL];n2=map[c.nR];}
+                    const n1Val = n1>=0 ? x.get([n1,0]) : 0;
+                    const n2Val = n2>=0 ? x.get([n2,0]) : 0;
+
+                    if(c.type === 'R') { curr = (n1Val - n2Val) / c.val; }
+                    else if(c.type === 'C') { curr = c_prev_I[Cs.indexOf(c)]; }
+                    else if(c.type === 'L') { curr = l_prev_I[Ls.indexOf(c)]; }
+                    else if(c.type.includes('V')) { curr = x.get([vOff + Vs.indexOf(c), 0]); }
+                    else if(c.type === 'I_AC') { curr = c.val * Math.sin(2*Math.PI*c.freq*t + (c.phase||0)*Math.PI/180); }
+                    else if(c.type === 'TX') { curr = x.get([tOff + Ts.indexOf(c), 0]); }
+                    resI[cIdx].push(curr);
+                });
+            } catch(e){ console.error(e); break; }
         }
         pOv.style.display='none';
-        lastSimResult = { dt, resV, resI, N, map, timeLog };
+        lastSimResult = { dt, resV, resI, N, map };
         drawTransientChart(timeLog, resV, N, map);
         updateFFTSources();
     }
 
     function drawTransientChart(times, vData, N, map) {
-        const ctx = document.getElementById('transientChart').getContext('2d');
+        const ctx=document.getElementById('transientChart').getContext('2d');
         if(myChart) myChart.destroy();
-        
-        let stride = 1;
-        if(times.length > 2000) stride = Math.ceil(times.length / 2000);
-        
+        const stride = Math.ceil(times.length / 1000);
         const labels = times.filter((_,i)=>i%stride===0).map(t=>(t*1000).toFixed(2) + 'ms');
-        const sets = [];
-        
-        activeProbes.forEach(p => {
-            let rawData = [];
-            if (p.type === 'V') {
-                const nodeIdx = map[p.target];
-                if (nodeIdx === -1) rawData = new Array(vData[0].length).fill(0);
-                else if (nodeIdx !== undefined) rawData = vData[nodeIdx];
-            } else if (p.type === 'I') {
-                const compIdx = components.findIndex(c => c.name === p.target);
-                if (compIdx !== -1 && lastSimResult.resI) rawData = lastSimResult.resI[compIdx];
-            }
-            if (rawData && rawData.length > 0) {
-                const data = rawData.filter((_,j)=>j%stride===0);
-                sets.push({ label: `${p.type}(${p.label})`, data: data, borderColor: p.color, borderWidth: 2, pointRadius: 0, tension: 0.1 });
-            }
-        });
-
-        const gridColor = isDarkMode ? '#333' : '#ddd'; 
+        const sets=[]; const cols=['#e03131','#1971c2','#2f9e44','#f08c00','#9c36b5'];
+        const invMap = {}; Object.keys(map).forEach(k => { if(map[k] >= 0) invMap[map[k]] = k; });
+        for(let i=0;i<N;i++){
+            const data = vData[i].filter((_,j)=>j%stride===0);
+            sets.push({ label:`V(Node ${invMap[i]})`, data:data, borderColor:cols[i%cols.length], borderWidth:1.5, pointRadius:0 });
+        }
+        const gridColor = isDarkMode ? '#333' : '#ddd';
         const textColor = isDarkMode ? '#aaa' : '#666';
-        
-        myChart = new Chart(ctx, {
-            type: 'line', data: { labels, datasets: sets },
-            options: {
-                responsive: true, maintainAspectRatio: false, animation: false,
+        myChart=new Chart(ctx,{
+            type:'line', data:{labels,datasets:sets},
+            options:{
+                responsive:true, maintainAspectRatio:false, animation:false,
                 interaction: { mode: 'nearest', axis: 'x', intersect: false },
-                scales: { 
-                    x: { title: {display:true, text:'Time'}, grid: {color:gridColor}, ticks: {color:textColor, maxTicksLimit: 8} }, 
-                    y: { title: {display:true, text:'Amplitude'}, grid: {color:gridColor}, ticks: {color:textColor} } 
+                scales:{ 
+                    x:{title:{display:true,text:'Time'}, grid:{color:gridColor}, ticks:{color:textColor, maxTicksLimit:8}}, 
+                    y:{title:{display:true, text:'Voltage (V)'}, grid:{color:gridColor}, ticks:{color:textColor}} 
                 },
                 plugins: { legend: { labels: { color: textColor } } }
             }
@@ -1177,37 +928,26 @@
         const row = document.getElementById(rowId);
         if(row) { row.classList.add('peak-row-active'); row.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
     }
-    
-    function pushHistory() { 
-        if(historyStep < historyStack.length - 1) historyStack = historyStack.slice(0, historyStep + 1); 
-        historyStack.push(JSON.stringify({railCount,groundRails:Array.from(groundRails),components:components.map(c=>({type:c.type,val:c.val,freq:c.freq,phase:c.phase,unit:c.unit,nL:c.nL,nR:c.nR,ratio:c.ratio,name:c.name,uiX:c.group.x(),uiY:c.group.y(),duty:c.duty,inputP:c.inputP,inputM:c.inputM,rotation:c.rotation}))})); 
-        if(historyStack.length > MAX_HISTORY) historyStack.shift(); else historyStep++; 
-    }
+
+    function formatEng(v) { if (v === 0) return "0"; if (Math.abs(v) < 1e-15) return "0"; const p = Math.floor(Math.log10(Math.abs(v)) / 3); const prefixes = ['p', 'n', 'u', 'm', '', 'k', 'M', 'G']; const s = prefixes[p + 4]; if (s === undefined) return v.toExponential(2); return (v / Math.pow(10, p * 3)).toFixed(2) + s; }
+    function parseUnit(s){if(!s)return NaN;s=s.toString();const m=s.match(/^([\d\.]+)\s*([a-zA-Z]*)$/);if(!m)return parseFloat(s);const v=parseFloat(m[1]),u=m[2],k={'p':1e-12,'n':1e-9,'u':1e-6,'m':1e-3,'k':1e3,'M':1e6,'G':1e9};return v*(k[u]||1);}
+    function formatUnit(v,u){if(Math.abs(v)<1e-15)return "0"+u;const a=Math.abs(v),r=[{v:1e9,s:'G'},{v:1e6,s:'M'},{v:1e3,s:'k'},{v:1,s:''},{v:1e-3,s:'m'},{v:1e-6,s:'u'},{v:1e-9,s:'n'},{v:1e-12,s:'p'}];for(let x of r)if(a>=x.v*0.9)return parseFloat((v/x.v).toFixed(2))+x.s+u;return v.toExponential(1)+u;}
+    function pushHistory() { if(historyStep < historyStack.length - 1) historyStack = historyStack.slice(0, historyStep + 1); historyStack.push(JSON.stringify({railCount,groundRails:Array.from(groundRails),components:components.map(c=>({type:c.type,val:c.val,freq:c.freq,phase:c.phase,unit:c.unit,nL:c.nL,nR:c.nR,ratio:c.ratio,name:c.name,uiX:c.group.x(),uiY:c.group.y()}))})); if(historyStack.length > MAX_HISTORY) historyStack.shift(); else historyStep++; }
     function undo() { if(historyStep > 0) { historyStep--; restoreState(historyStack[historyStep]); } }
     function redo() { if(historyStep < historyStack.length - 1) { historyStep++; restoreState(historyStack[historyStep]); } }
-    
-    function restoreState(json) { 
-        const d = JSON.parse(json); 
-        components.forEach(c=>{c.group.destroy();c.lineL.destroy();c.lineR.destroy();if(c.lineOut)c.lineOut.destroy();}); 
-        components=[]; railCount = d.railCount; groundRails = new Set(d.groundRails); idCnt={R:0,L:0,C:0,V:0,I:0,T:0,D:0,O:0}; 
-        d.components.forEach(c => { spawn(c.type, c); }); drawGrid(); 
-    }
-    
-    function saveCircuit(){ 
-        const d={railCount,groundRails:Array.from(groundRails),components:components.map(c=>({type:c.type,val:c.val,freq:c.freq,phase:c.phase,unit:c.unit,nL:c.nL,nR:c.nR,ratio:c.ratio,name:c.name,uiX:c.group.x(),uiY:c.group.y(),duty:c.duty,inputP:c.inputP,inputM:c.inputM,rotation:c.rotation}))}; 
-        const b=new Blob([JSON.stringify(d)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='circuit.json'; a.click(); 
-    }
+    function restoreState(json) { const d = JSON.parse(json); components.forEach(c=>{c.group.destroy();c.lineL.destroy();c.lineR.destroy();}); components=[]; railCount = d.railCount; groundRails = new Set(d.groundRails); idCnt={R:0,L:0,C:0,V:0,I:0,T:0}; d.components.forEach(c => { spawn(c.type, c); }); drawGrid(); }
+    function saveCircuit(){ const d={railCount,groundRails:Array.from(groundRails),components:components.map(c=>({type:c.type,val:c.val,freq:c.freq,phase:c.phase,unit:c.unit,nL:c.nL,nR:c.nR,ratio:c.ratio,name:c.name,uiX:c.group.x(),uiY:c.group.y()}))}; const b=new Blob([JSON.stringify(d)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='circuit.json'; a.click(); }
     function loadCircuit(input){ const f=input.files[0]; if(!f) return; const r=new FileReader(); r.onload=(e)=>{ try{ const d=JSON.parse(e.target.result); resetAll(); railCount=d.railCount||6; groundRails=new Set(d.groundRails||[1]); d.components.forEach(c=>spawn(c.type,c)); drawGrid(); pushHistory(); }catch(err){alert("Error");} }; r.readAsText(f); input.value=''; }
-    function resetAll(){ 
-        components.forEach(c=>{c.group.destroy();c.lineL.destroy();c.lineR.destroy();if(c.lineOut)c.lineOut.destroy();}); 
-        components=[]; idCnt={R:0,L:0,C:0,V:0,I:0,T:0,D:0,O:0}; railCount=6; groundRails=new Set([1]); activeProbes=[]; updateProbeUI();
-        drawGrid(); if(myChart)myChart.destroy(); if(fftChart)fftChart.destroy(); pushHistory(); 
-    }
-    function copyComponent(){ if(selectedComp) clipboard = {type:selectedComp.type, val:selectedComp.val, freq:selectedComp.freq, phase:selectedComp.phase, unit:selectedComp.unit, ratio:selectedComp.ratio, duty:selectedComp.duty, rotation:selectedComp.rotation}; }
+    function resetAll(){ components.forEach(c=>{c.group.destroy();c.lineL.destroy();c.lineR.destroy();}); components=[]; idCnt={R:0,L:0,C:0,V:0,I:0,T:0}; railCount=6; groundRails=new Set([1]); drawGrid(); if(myChart)myChart.destroy(); if(fftChart)fftChart.destroy(); pushHistory(); }
+    function copyComponent(){ if(selectedComp) clipboard = {type:selectedComp.type, val:selectedComp.val, freq:selectedComp.freq, phase:selectedComp.phase, unit:selectedComp.unit, ratio:selectedComp.ratio}; }
     function pasteComponent(){ if(clipboard) spawn(clipboard.type, {...clipboard, uiX:stage.width()/2, uiY:stage.height()/2}); }
     function exportCSV(){ if(!lastSimResult) return alert("No Data"); let csv="Time(s)"; for(let i=0;i<lastSimResult.N;i++) csv+=`,V(N${i+1})`; csv+="\n"; const {dt, resV} = lastSimResult; for(let i=0; i<resV[0].length; i++){ csv += `${(i*dt).toFixed(6)}`; for(let j=0; j<lastSimResult.N; j++) csv+=`,${resV[j][i]}`; csv+="\n"; } const b=new Blob([csv],{type:'text/csv'}); const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='transient.csv'; a.click(); }
 
-    setTimeout(() => { fitStage(); pushHistory(); }, 500);
+    window.addEventListener('load', () => {
+        fitStage();
+        pushHistory();
+        window.addEventListener('resize', fitStage);
+    });
 </script>
 </body>
 </html>
